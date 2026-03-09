@@ -42,6 +42,10 @@ function App() {
       const data = snapshot.val();
       setHostName(data.host || '');
 
+      if (data.status === 'auction') {
+        setCurrentPage(prev => prev !== 'auction' ? 'auction' : prev);
+      }
+
       const users = data.users || {};
 
       // Dynamic Host Reassignment
@@ -121,7 +125,7 @@ function App() {
           <div className="flex items-center" style={{ gap: '1rem' }}>
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#10b981" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12.55a11 11 0 0 1 14.08 0"></path><path d="M1.42 9a16 16 0 0 1 21.16 0"></path><path d="M8.53 16.11a6 6 0 0 1 6.95 0"></path><line x1="12" y1="20" x2="12.01" y2="20"></line></svg>
             {isHost && (
-              <button className="btn-solid-orange start-btn" onClick={() => setCurrentPage('auction')}>
+              <button className="btn-solid-orange start-btn" onClick={() => set(ref(db, `rooms/${userData.roomId}/status`), 'auction')}>
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
                 Start
               </button>
