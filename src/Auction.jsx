@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { db } from './firebase';
-import { ref, onValue, set } from 'firebase/database';
+import { ref, onValue, set, get } from 'firebase/database';
 import { PLAYERS_DATA } from './playersData';
 
 const TEAM_COLORS = {
@@ -104,7 +104,15 @@ export default function Auction({ userData, onEnd }) {
             const updatedState = { ...auctionState, isSold: true, soldTo: finalBuyer, timer: 0 };
             set(ref(db, `rooms/${userData.roomId}/auctionState`), updatedState);
 
-            // If a team bought them, update that team's purse in the root users object
+            const currentPlayer = PLAYERS_DATA[auctionState.currentPlayerIndex] || PLAYERS_DATA[0];
+            const playerSnapshot = {
+                id: currentPlayer.id,
+                name: `${currentPlayer.firstName} ${currentPlayer.lastName}`,
+                role: currentPlayer.role,
+                boughtFor: auctionState.currentBid || parseFloat(currentPlayer.basePrice),
+                image: currentPlayer.imageUrl
+            };
+
             if (finalBuyer !== 'UNSOLD') {
                 // Find user doc by team
                 const buyerName = Object.keys(roomUsers).find(name => roomUsers[name].team === finalBuyer);
@@ -114,7 +122,19 @@ export default function Auction({ userData, onEnd }) {
 
                     // Deduct
                     set(ref(db, `rooms/${userData.roomId}/users/${buyerName}/purse`), newPurse);
+
+                    // Add to Squad
+                    get(ref(db, `rooms/${userData.roomId}/squads/${finalBuyer}`)).then(snap => {
+                        const currentSquad = snap.val() || [];
+                        set(ref(db, `rooms/${userData.roomId}/squads/${finalBuyer}`), [...currentSquad, playerSnapshot]);
+                    });
                 }
+            } else {
+                // Add to Unsold List
+                get(ref(db, `rooms/${userData.roomId}/unsold`)).then(snap => {
+                    const unsoldList = snap.val() || [];
+                    set(ref(db, `rooms/${userData.roomId}/unsold`), [...unsoldList, playerSnapshot]);
+                });
             }
 
             // After a 5 second delay, load the next player
