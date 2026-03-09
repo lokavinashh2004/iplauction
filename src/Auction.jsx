@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { db } from './firebase';
 import { ref, onValue, set, get } from 'firebase/database';
-import { PLAYERS_DATA } from './playersData';
+import { PLAYERS_DATA } from './Players/playersData';
 
 const TEAM_COLORS = {
     MI: '#004BA0',
@@ -140,7 +140,7 @@ export default function Auction({ userData, onEnd }) {
                 });
             }
 
-            // After a 5 second delay, load the next player
+            // After a 3 second delay, load the next player
             setTimeout(() => {
                 const nextIndex = (auctionState.currentPlayerIndex + 1) % PLAYERS_DATA.length;
                 const nextPlayer = PLAYERS_DATA[nextIndex];
@@ -153,7 +153,7 @@ export default function Auction({ userData, onEnd }) {
                     isSold: false,
                     soldTo: null
                 });
-            }, 5000);
+            }, 3000);
 
             return;
         }
@@ -167,6 +167,17 @@ export default function Auction({ userData, onEnd }) {
 
         return () => clearInterval(interval);
     }, [isHost, auctionState.isSold, auctionState.timer, userData.roomId, auctionState, roomUsers]);
+
+    // Play hammer sound effect when player is sold
+    useEffect(() => {
+        if (auctionState.isSold) {
+            setTimeout(() => {
+                // Public tool hammer sound
+                const hammerAudio = new Audio('https://actions.google.com/sounds/v1/impacts/wood_plank_slap_1.ogg');
+                hammerAudio.play().catch(e => console.log('Audio play failed (user may not have interacted)', e));
+            }, 400); // Syncs with CSS hammer strike keyframe hitting table
+        }
+    }, [auctionState.isSold]);
 
     const buyingTeam = auctionState.soldTo || auctionState.currentBidTeam || 'UNSOLD';
 
@@ -197,7 +208,7 @@ export default function Auction({ userData, onEnd }) {
     return (
         <div className="center-panel">
             {/* Player Card */}
-            <div className="auction-card mb-4 animate-fade-in" style={{ padding: 0, overflow: 'hidden' }}>
+            <div className={`auction-card mb-4 animate-fade-in ${isSold ? 'shake' : ''}`} style={{ padding: 0, overflow: 'hidden' }}>
                 <div className="timer-progress-bar" style={{ width: `${(auctionState.timer / 15) * 100}%` }}></div>
 
                 <div className="bid-presentation">
@@ -207,9 +218,23 @@ export default function Auction({ userData, onEnd }) {
                             <img src={IPL_LOGOS[buyingTeam]} alt={buyingTeam} style={{ width: '100%', height: '100%', objectFit: 'contain', opacity: 0.5 }} />
                         </div>
                     )}
-                    <div className={`stamp-sold ${isSold ? 'animate' : ''}`}>
-                        {buyingTeam === 'UNSOLD' ? 'UNSOLD' : 'SOLD'}
+                    <div className={`stamp-sold flex-col ${isSold ? 'animate' : ''}`} style={{ textAlign: 'center', fontSize: '2.5rem', lineHeight: '1.2' }}>
+                        {buyingTeam === 'UNSOLD' ? (
+                            <div>UNSOLD</div>
+                        ) : (
+                            <>
+                                <div>SOLD TO {buyingTeam}</div>
+                                <div style={{ fontSize: '1.8rem', color: '#fff' }}>FOR ₹{(auctionState.currentBid || 0).toFixed(2)} CR</div>
+                            </>
+                        )}
                     </div>
+
+                    {isSold && (
+                        <div className="hammer-container">
+                            <div className="hammer animate">🔨</div>
+                            <div className="hammer-hit-effect animate"></div>
+                        </div>
+                    )}
 
                     <div className="player-avatar-wrapper">
                         <div className="avatar-shield">
@@ -248,7 +273,7 @@ export default function Auction({ userData, onEnd }) {
                         <span>AGE {activePlayer.age}</span> <span className="details-separator">|</span>
                         <span>COUNTRY {activePlayer.country}</span> <span className="details-separator">|</span>
                         <span>PREV TEAM {activePlayer.previousTeam}</span> <span className="details-separator">|</span>
-                        <span>iplt20.com</span>
+                        <span style={{ color: '#10b981', fontWeight: 600 }}>IPL STAT {activePlayer.iplStat}</span>
                     </div>
 
                     <div className="flex items-center w-full px-4 pb-4" style={{ gap: '0.5rem', background: '#121212', paddingTop: '1rem', marginTop: '-1rem', zIndex: 100, position: 'relative' }}>
@@ -288,10 +313,10 @@ export default function Auction({ userData, onEnd }) {
             <div className="banner-item purple mb-4 animate-fade-in" style={{ animationDelay: '0.1s' }}>
                 <div className="flex-col-start">
                     <span className="flex items-center" style={{ gap: '0.5rem', fontWeight: 700 }}>
-                        <span style={{ color: '#a855f7' }}>🚀</span> Play IPL Simulation Game! <span className="banner-tag bg-green">LIVE</span>
+                        <span style={{ color: '#a855f7' }}>🚀</span> {userData.team ? `Playing as ${userData.team}` : 'Play IPL Simulation Game!'} <span className="banner-tag bg-green">LIVE</span>
                     </span>
                     <span style={{ fontSize: '0.75rem', color: 'var(--text-tertiary)', marginTop: '0.25rem' }}>
-                        24/7 cricket simulation • Play now at cricketdirector.com
+                        24/7 cricket simulation • Play now as {userData.team || 'your favorite team'}
                     </span>
                 </div>
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#a855f7" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4.5 16.5c-1.5 1.26-2 5-2 5s3.74-.5 5-2c.71-.84.7-2.13-.09-2.91a2.18 2.18 0 0 0-2.91-.09z"></path><path d="m12 15-3-3a22 22 0 0 1 3.86-12 2 2 0 0 1 2.9 0 22 22 0 0 1-12 3.86z"></path><path d="m15 12 3-3a22 22 0 0 0 12-3.86 2 2 0 0 0 0-2.9 22 22 0 0 0-3.86 12z"></path></svg>

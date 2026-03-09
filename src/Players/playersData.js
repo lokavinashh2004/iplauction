@@ -3,110 +3,120 @@ export const PLAYERS_DATA = [
         id: 1,
         firstName: "VIRAT",
         lastName: "KOHLI",
-        role: "BATTER",
-        age: 35,
+        role: "Batsman",
         country: "IND",
+        age: 35,
         previousTeam: "RCB",
         basePrice: "2.00",
-        imageUrl: "https://bcciplayerimages.s3.ap-south-1.amazonaws.com/ipl/IPLHeadshot2024/2.png"
+        imageUrl: "https://www.cricbuzz.com/a/img/v1/152x152/i1/c170661/virat-kohli.jpg",
+        iplStat: "7263 Runs"
     },
     {
         id: 2,
         firstName: "MS",
         lastName: "DHONI",
-        role: "WICKETKEEPER",
-        age: 42,
+        role: "Wicketkeeper",
         country: "IND",
+        age: 42,
         previousTeam: "CSK",
         basePrice: "1.50",
-        imageUrl: "https://bcciplayerimages.s3.ap-south-1.amazonaws.com/ipl/IPLHeadshot2024/1.png"
+        imageUrl: "https://www.cricbuzz.com/a/img/v1/152x152/i1/c170677/ms-dhoni.jpg",
+        iplStat: "5082 Runs"
     },
     {
         id: 3,
         firstName: "ROHIT",
         lastName: "SHARMA",
-        role: "BATTER",
-        age: 36,
+        role: "Batsman",
         country: "IND",
+        age: 36,
         previousTeam: "MI",
         basePrice: "2.00",
-        imageUrl: "https://bcciplayerimages.s3.ap-south-1.amazonaws.com/ipl/IPLHeadshot2024/107.png"
+        imageUrl: "https://www.cricbuzz.com/a/img/v1/152x152/i1/c170663/rohit-sharma.jpg",
+        iplStat: "6211 Runs"
     },
     {
         id: 4,
         firstName: "JASPRIT",
         lastName: "BUMRAH",
-        role: "BOWLER",
-        age: 30,
+        role: "Bowler",
         country: "IND",
+        age: 30,
         previousTeam: "MI",
         basePrice: "2.00",
-        imageUrl: "https://bcciplayerimages.s3.ap-south-1.amazonaws.com/ipl/IPLHeadshot2024/1124.png"
+        imageUrl: "https://www.cricbuzz.com/a/img/v1/152x152/i1/c170685/jasprit-bumrah.jpg",
+        iplStat: "145 Wickets"
     },
     {
         id: 5,
         firstName: "SUNIL",
         lastName: "NARINE",
-        role: "ALL-ROUNDER",
-        age: 35,
+        role: "All-rounder",
         country: "WI",
+        age: 35,
         previousTeam: "KKR",
         basePrice: "2.00",
-        imageUrl: "https://bcciplayerimages.s3.ap-south-1.amazonaws.com/ipl/IPLHeadshot2024/203.png"
+        imageUrl: "https://www.cricbuzz.com/a/img/v1/152x152/i1/c170700/sunil-narine.jpg",
+        iplStat: "163 Wickets"
     },
     {
         id: 6,
         firstName: "RISHABH",
         lastName: "PANT",
-        role: "WICKETKEEPER",
-        age: 26,
+        role: "Wicketkeeper",
         country: "IND",
+        age: 26,
         previousTeam: "DC",
         basePrice: "2.00",
-        imageUrl: "https://bcciplayerimages.s3.ap-south-1.amazonaws.com/ipl/IPLHeadshot2024/2972.png"
+        imageUrl: "https://www.cricbuzz.com/a/img/v1/152x152/i1/c170706/rishabh-pant.jpg",
+        iplStat: "2838 Runs"
     },
     {
         id: 7,
         firstName: "HARDIK",
         lastName: "PANDYA",
-        role: "ALL-ROUNDER",
-        age: 30,
+        role: "All-rounder",
         country: "IND",
+        age: 30,
         previousTeam: "MI",
         basePrice: "2.00",
-        imageUrl: "https://bcciplayerimages.s3.ap-south-1.amazonaws.com/ipl/IPLHeadshot2024/2740.png"
+        imageUrl: "https://www.cricbuzz.com/a/img/v1/152x152/i1/c170688/hardik-pandya.jpg",
+        iplStat: "2309 Runs"
     },
     {
         id: 8,
         firstName: "RASHID",
         lastName: "KHAN",
-        role: "BOWLER",
-        age: 25,
+        role: "Bowler",
         country: "AFG",
+        age: 25,
         previousTeam: "GT",
         basePrice: "2.00",
-        imageUrl: "https://bcciplayerimages.s3.ap-south-1.amazonaws.com/ipl/IPLHeadshot2024/2885.png"
+        imageUrl: "https://www.cricbuzz.com/a/img/v1/152x152/i1/c170707/rashid-khan.jpg",
+        iplStat: "139 Wickets"
     },
     {
         id: 9,
         firstName: "KL",
         lastName: "RAHUL",
-        role: "WICKETKEEPER",
-        age: 31,
+        role: "Wicketkeeper",
         country: "IND",
+        age: 31,
         previousTeam: "LSG",
         basePrice: "2.00",
-        imageUrl: "https://bcciplayerimages.s3.ap-south-1.amazonaws.com/ipl/IPLHeadshot2024/1125.png"
+        imageUrl: "https://www.cricbuzz.com/a/img/v1/152x152/i1/c170674/kl-rahul.jpg",
+        iplStat: "4163 Runs"
     },
     {
         id: 10,
         firstName: "SANJU",
         lastName: "SAMSON",
-        role: "WICKETKEEPER",
-        age: 29,
+        role: "Wicketkeeper",
         country: "IND",
+        age: 29,
         previousTeam: "RR",
         basePrice: "2.00",
-        imageUrl: "https://bcciplayerimages.s3.ap-south-1.amazonaws.com/ipl/IPLHeadshot2024/258.png"
+        imageUrl: "https://www.cricbuzz.com/a/img/v1/152x152/i1/c170690/sanju-samson.jpg",
+        iplStat: "3888 Runs"
     }
 ];
