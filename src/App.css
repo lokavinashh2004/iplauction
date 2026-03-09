@@ -1202,14 +1202,14 @@
   right: 0;
   bottom: 0;
   opacity: 0;
-  transition: opacity 0.4s ease;
+  transition: opacity 0.5s ease-out;
   z-index: 5;
-  mix-blend-mode: hard-light;
+  mix-blend-mode: multiply;
   pointer-events: none;
 }
 
 .team-bg-overlay.show {
-  opacity: 0.85;
+  opacity: 0.95;
 }
 
 .team-logo-bg {

@@ -256,24 +256,24 @@ export default function Auction({ userData, onEnd }) {
                     </div>
 
                     <div className="bid-stats-container">
-                        <div className="bid-box skewed left">
+                        <div className="bid-box skewed left" style={{ backgroundColor: isSold && buyingTeam !== 'UNSOLD' ? teamColor : '#026a64', borderColor: isSold && buyingTeam !== 'UNSOLD' ? teamColor : '#55e6d9', transition: 'all 0.5s ease' }}>
                             <div>
                                 <div className="bid-label">BASE PRICE</div>
                                 <div className="bid-value">₹ {activePlayer.basePrice}Cr</div>
                             </div>
                         </div>
 
-                        <div className="bid-box main-name">
+                        <div className="bid-box main-name" style={{ backgroundColor: isSold && buyingTeam !== 'UNSOLD' ? teamColor : '#026a64', borderColor: isSold && buyingTeam !== 'UNSOLD' ? teamColor : '#55e6d9', transition: 'all 0.5s ease' }}>
                             <div className="player-first-name">{activePlayer.firstName}</div>
                             <div className="player-last-name">{activePlayer.lastName}</div>
                         </div>
 
-                        <div className="bid-box skewed right">
+                        <div className="bid-box skewed right" style={{ backgroundColor: isSold && buyingTeam !== 'UNSOLD' ? teamColor : '#026a64', borderColor: isSold && buyingTeam !== 'UNSOLD' ? teamColor : '#55e6d9', transition: 'all 0.5s ease' }}>
                             <div>
                                 <div className="bid-label">CURRENT BID</div>
                                 <div className="bid-value">₹ {(auctionState.currentBid || 0).toFixed(2)}Cr</div>
                                 {auctionState.currentBidTeam && (
-                                    <div style={{ fontSize: '0.65rem', color: TEAM_COLORS[auctionState.currentBidTeam], fontWeight: 700, marginTop: '2px' }}>
+                                    <div style={{ fontSize: '0.65rem', color: isSold ? '#fff' : TEAM_COLORS[auctionState.currentBidTeam], fontWeight: 700, marginTop: '2px' }}>
                                         {auctionState.currentBidTeam} leads
                                     </div>
                                 )}
@@ -281,7 +281,7 @@ export default function Auction({ userData, onEnd }) {
                         </div>
                     </div>
 
-                    <div className="player-details-strip">
+                    <div className="player-details-strip" style={{ backgroundColor: isSold && buyingTeam !== 'UNSOLD' ? teamColor : '#065f5a', borderColor: isSold && buyingTeam !== 'UNSOLD' ? teamColor : '#55e6d9', transition: 'all 0.5s ease' }}>
                         <span>{activePlayer.role}</span> <span className="details-separator">|</span>
                         <span>AGE {activePlayer.age}</span> <span className="details-separator">|</span>
                         <span>COUNTRY {activePlayer.country}</span> <span className="details-separator">|</span>
