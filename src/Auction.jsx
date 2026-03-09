@@ -1,4 +1,7 @@
 import { useState, useEffect } from 'react';
+import { db } from './firebase';
+import { ref, onValue, set } from 'firebase/database';
+import { PLAYERS_DATA } from './playersData';
 
 const TEAM_COLORS = {
     MI: '#004BA0',
@@ -28,47 +31,129 @@ const IPL_LOGOS = {
 
 export default function Auction({ userData, onEnd }) {
     const [activeTab, setActiveTab] = useState('activity');
-    const [timer, setTimer] = useState(10);
-    const [isSold, setIsSold] = useState(false);
-    const [soldTo, setSoldTo] = useState(null);
+
+    // Synced State
+    const [auctionState, setAuctionState] = useState({
+        currentPlayerIndex: 0,
+        currentBid: 0,
+        currentBidTeam: null,
+        timer: 15,
+        isSold: false,
+        soldTo: null
+    });
+
+    const [isHost, setIsHost] = useState(false);
+
+    // Sync auction state from Firebase
+    useEffect(() => {
+        if (!userData.roomId) return;
+
+        // Setup Auction State Node if Host and it doesn't exist
+        const roomRef = ref(db, `rooms/${userData.roomId}`);
+        const unsubscribe = onValue(roomRef, (snapshot) => {
+            if (snapshot.exists()) {
+                const data = snapshot.val();
+
+                // Determine if we are the host
+                const hostStatus = !!(userData.name && data.host === userData.name);
+                setIsHost(hostStatus);
+
+                if (data.auctionState) {
+                    setAuctionState(data.auctionState);
+                } else if (hostStatus) {
+                    // Initialize the auction state if it's completely missing
+                    const initialPlayer = PLAYERS_DATA[0];
+                    set(ref(db, `rooms/${userData.roomId}/auctionState`), {
+                        currentPlayerIndex: 0,
+                        currentBid: parseFloat(initialPlayer.basePrice),
+                        currentBidTeam: null,
+                        timer: 15,
+                        isSold: false,
+                        soldTo: null
+                    });
+                }
+            }
+        });
+
+        return () => unsubscribe();
+    }, [userData.roomId, userData.name]);
+
+    const activePlayer = PLAYERS_DATA[auctionState.currentPlayerIndex] || PLAYERS_DATA[0];
 
     // Pick a random team when bidding to demonstrate different team effects
     const handleBidSold = () => {
-        const teams = Object.keys(TEAM_COLORS);
-        const randomTeam = teams[Math.floor(Math.random() * teams.length)];
-        setSoldTo(randomTeam);
-        setIsSold(true);
+        if (isHost && !auctionState.isSold) {
+            const updatedState = { ...auctionState, isSold: true, soldTo: auctionState.currentBidTeam || 'UNSOLD', timer: 0 };
+            set(ref(db, `rooms/${userData.roomId}/auctionState`), updatedState);
+        }
     };
 
-    // If simulating, prefer the soldTo randomly chosen team to show off animations
-    const buyingTeam = soldTo || userData?.team || 'MI';
-
-    // Mock timer countdown for effect
+    // Host exclusively drives the game clock to prevent client drift
     useEffect(() => {
+        if (!isHost || auctionState.isSold) return;
+
+        if (auctionState.timer <= 0) {
+            const updatedState = { ...auctionState, isSold: true, soldTo: auctionState.currentBidTeam || 'UNSOLD', timer: 0 };
+            set(ref(db, `rooms/${userData.roomId}/auctionState`), updatedState);
+            return;
+        }
+
         const interval = setInterval(() => {
-            setTimer(prev => (prev > 0 ? prev - 1 : 10));
+            set(ref(db, `rooms/${userData.roomId}/auctionState`), {
+                ...auctionState,
+                timer: auctionState.timer - 1
+            });
         }, 1000);
+
         return () => clearInterval(interval);
-    }, []);
+    }, [isHost, auctionState.isSold, auctionState.timer, userData.roomId, auctionState]);
+
+    const buyingTeam = auctionState.soldTo || auctionState.currentBidTeam || 'UNSOLD';
+
+    // We only pass the colors if a team is assigned. If unsold, default to neutral
+    const isSold = auctionState.isSold;
+    const teamColor = TEAM_COLORS[buyingTeam] || '#666';
+
+    const myPurse = 100.00; // Temporary mock purse
+    const nextBidAmount = auctionState.currentBid ? auctionState.currentBid + 0.5 : parseFloat(activePlayer.basePrice);
+
+    // Check if the current user represents a team, and if that team is currently leading the bid
+    const isMyTeamLeading = Boolean(userData.team && auctionState.currentBidTeam === userData.team);
+
+    // The user can only bid if they are a team, they aren't currently leading, and they have enough purse
+    const canBid = Boolean(userData.team && !isMyTeamLeading && nextBidAmount <= myPurse);
+
+    const handlePlaceBid = () => {
+        if (!canBid || isSold) return;
+
+        set(ref(db, `rooms/${userData.roomId}/auctionState`), {
+            ...auctionState,
+            currentBid: nextBidAmount,
+            currentBidTeam: userData.team,
+            timer: 15 // Reset the auction countdown so teams can respond
+        });
+    };
 
     return (
         <div className="center-panel">
             {/* Player Card */}
             <div className="auction-card mb-4 animate-fade-in" style={{ padding: 0, overflow: 'hidden' }}>
-                <div className="timer-progress-bar" style={{ width: `${(timer / 10) * 100}%` }}></div>
+                <div className="timer-progress-bar" style={{ width: `${(auctionState.timer / 15) * 100}%` }}></div>
 
                 <div className="bid-presentation">
-                    <div className={`team-bg-overlay ${isSold ? 'show' : ''}`} style={{ backgroundColor: TEAM_COLORS[buyingTeam] }}></div>
-                    {isSold && (
+                    <div className={`team-bg-overlay ${isSold && buyingTeam !== 'UNSOLD' ? 'show' : ''}`} style={{ backgroundColor: teamColor }}></div>
+                    {isSold && buyingTeam !== 'UNSOLD' && (
                         <div className="team-logo-bg show">
                             <img src={IPL_LOGOS[buyingTeam]} alt={buyingTeam} style={{ width: '100%', height: '100%', objectFit: 'contain', opacity: 0.5 }} />
                         </div>
                     )}
-                    <div className={`stamp-sold ${isSold ? 'animate' : ''}`}>SOLD</div>
+                    <div className={`stamp-sold ${isSold ? 'animate' : ''}`}>
+                        {buyingTeam === 'UNSOLD' ? 'UNSOLD' : 'SOLD'}
+                    </div>
 
                     <div className="player-avatar-wrapper">
                         <div className="avatar-shield">
-                            <img src="/rishabh.png" alt="Rishabh Pant" className="player-image" />
+                            <img src={activePlayer.imageUrl} alt={`${activePlayer.firstName} ${activePlayer.lastName}`} className="player-image" />
                         </div>
                     </div>
 
@@ -76,46 +161,80 @@ export default function Auction({ userData, onEnd }) {
                         <div className="bid-box skewed left">
                             <div>
                                 <div className="bid-label">BASE PRICE</div>
-                                <div className="bid-value">₹ 2.00Cr</div>
+                                <div className="bid-value">₹ {activePlayer.basePrice}Cr</div>
                             </div>
                         </div>
 
                         <div className="bid-box main-name">
-                            <div className="player-first-name">RISHABH</div>
-                            <div className="player-last-name">PANT</div>
+                            <div className="player-first-name">{activePlayer.firstName}</div>
+                            <div className="player-last-name">{activePlayer.lastName}</div>
                         </div>
 
                         <div className="bid-box skewed right">
                             <div>
                                 <div className="bid-label">CURRENT BID</div>
-                                <div className="bid-value">₹ 19.50Cr</div>
+                                <div className="bid-value">₹ {(auctionState.currentBid || 0).toFixed(2)}Cr</div>
+                                {auctionState.currentBidTeam && (
+                                    <div style={{ fontSize: '0.65rem', color: TEAM_COLORS[auctionState.currentBidTeam], fontWeight: 700, marginTop: '2px' }}>
+                                        {auctionState.currentBidTeam} leads
+                                    </div>
+                                )}
                             </div>
                         </div>
                     </div>
 
                     <div className="player-details-strip">
-                        <span>BATTER</span> <span className="details-separator">|</span>
-                        <span>AGE 27</span> <span className="details-separator">|</span>
-                        <span>COUNTRY IND</span> <span className="details-separator">|</span>
-                        <span>IPL 2024 DC</span> <span className="details-separator">|</span>
+                        <span>{activePlayer.role}</span> <span className="details-separator">|</span>
+                        <span>AGE {activePlayer.age}</span> <span className="details-separator">|</span>
+                        <span>COUNTRY {activePlayer.country}</span> <span className="details-separator">|</span>
+                        <span>PREV TEAM {activePlayer.previousTeam}</span> <span className="details-separator">|</span>
                         <span>iplt20.com</span>
                     </div>
 
                     <div className="flex items-center w-full px-4 pb-4" style={{ gap: '0.5rem', background: '#121212', paddingTop: '1rem', marginTop: '-1rem', zIndex: 100, position: 'relative' }}>
-                        <div className={`timer-box ${timer <= 3 ? 'danger' : 'warning'}`}>
-                            <span className="timer-num">{timer}</span>
+                        <div className={`timer-box ${auctionState.timer <= 3 ? 'danger' : 'warning'}`}>
+                            <span className="timer-num">{auctionState.timer}</span>
                             <span className="timer-text">SEC</span>
                         </div>
                         <div className="flex-col" style={{ marginLeft: 'auto', marginRight: '1rem', alignItems: 'flex-end', flex: 1 }}>
                             {isSold ? (
-                                <div style={{ color: '#D4AF37', fontSize: '1.25rem', fontWeight: 800 }}>SOLD TO {buyingTeam}</div>
+                                <div style={{ color: buyingTeam === 'UNSOLD' ? '#ef4444' : '#D4AF37', fontSize: '1.25rem', fontWeight: 800 }}>
+                                    {buyingTeam === 'UNSOLD' ? 'UNSOLD' : `SOLD TO ${buyingTeam}`}
+                                </div>
                             ) : (
-                                <span style={{ fontSize: '0.7rem', color: 'var(--text-tertiary)' }}>Purse: <span style={{ color: '#10b981', fontWeight: 600 }}>2.75 Cr</span></span>
+                                <span style={{ fontSize: '0.7rem', color: 'var(--text-tertiary)' }}>Purse: <span style={{ color: nextBidAmount > myPurse ? '#ef4444' : '#10b981', fontWeight: 600 }}>{myPurse.toFixed(2)} Cr</span></span>
                             )}
                         </div>
                         {!isSold && (
-                            <button className="btn-bid" style={{ padding: '0.5rem 2rem' }} onClick={handleBidSold}>
-                                BID ₹ 19.50Cr
+                            <button
+                                className="btn-bid"
+                                style={{
+                                    padding: '0.5rem 2rem',
+                                    opacity: canBid ? 1 : 0.5,
+                                    cursor: canBid ? 'pointer' : 'not-allowed',
+                                    background: isMyTeamLeading ? '#4b5563' : '' // Grey out if leading
+                                }}
+                                onClick={handlePlaceBid}
+                                disabled={!canBid}
+                            >
+                                {isMyTeamLeading ? 'LEADING BID' : `BID ₹ ${nextBidAmount.toFixed(2)}Cr`}
+                            </button>
+                        )}
+                        {isHost && isSold && (
+                            <button className="btn-bid" style={{ padding: '0.5rem 2rem', background: '#3b82f6' }} onClick={() => {
+                                // Move to next player
+                                const nextIndex = (auctionState.currentPlayerIndex + 1) % PLAYERS_DATA.length;
+                                const nextPlayer = PLAYERS_DATA[nextIndex];
+                                set(ref(db, `rooms/${userData.roomId}/auctionState`), {
+                                    currentPlayerIndex: nextIndex,
+                                    currentBid: parseFloat(nextPlayer.basePrice),
+                                    currentBidTeam: null,
+                                    timer: 15,
+                                    isSold: false,
+                                    soldTo: null
+                                });
+                            }}>
+                                NEXT PLAYER
                             </button>
                         )}
                     </div>
