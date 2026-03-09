@@ -43,6 +43,7 @@ export default function Auction({ userData, onEnd }) {
     });
 
     const [isHost, setIsHost] = useState(false);
+    const [roomUsers, setRoomUsers] = useState({});
 
     // Sync auction state from Firebase
     useEffect(() => {
@@ -57,6 +58,10 @@ export default function Auction({ userData, onEnd }) {
                 // Determine if we are the host
                 const hostStatus = !!(userData.name && data.host === userData.name);
                 setIsHost(hostStatus);
+
+                if (data.users) {
+                    setRoomUsers(data.users);
+                }
 
                 if (data.auctionState) {
                     setAuctionState(data.auctionState);
@@ -93,8 +98,39 @@ export default function Auction({ userData, onEnd }) {
         if (!isHost || auctionState.isSold) return;
 
         if (auctionState.timer <= 0) {
-            const updatedState = { ...auctionState, isSold: true, soldTo: auctionState.currentBidTeam || 'UNSOLD', timer: 0 };
+            const finalBuyer = auctionState.currentBidTeam || 'UNSOLD';
+
+            // Mark Sold State
+            const updatedState = { ...auctionState, isSold: true, soldTo: finalBuyer, timer: 0 };
             set(ref(db, `rooms/${userData.roomId}/auctionState`), updatedState);
+
+            // If a team bought them, update that team's purse in the root users object
+            if (finalBuyer !== 'UNSOLD') {
+                // Find user doc by team
+                const buyerName = Object.keys(roomUsers).find(name => roomUsers[name].team === finalBuyer);
+                if (buyerName) {
+                    const currentPurse = roomUsers[buyerName]?.purse !== undefined ? roomUsers[buyerName].purse : 100.0;
+                    const newPurse = currentPurse - auctionState.currentBid;
+
+                    // Deduct
+                    set(ref(db, `rooms/${userData.roomId}/users/${buyerName}/purse`), newPurse);
+                }
+            }
+
+            // After a 5 second delay, load the next player
+            setTimeout(() => {
+                const nextIndex = (auctionState.currentPlayerIndex + 1) % PLAYERS_DATA.length;
+                const nextPlayer = PLAYERS_DATA[nextIndex];
+                set(ref(db, `rooms/${userData.roomId}/auctionState`), {
+                    currentPlayerIndex: nextIndex,
+                    currentBid: parseFloat(nextPlayer.basePrice),
+                    currentBidTeam: null,
+                    timer: 15,
+                    isSold: false,
+                    soldTo: null
+                });
+            }, 5000);
+
             return;
         }
 
@@ -106,7 +142,7 @@ export default function Auction({ userData, onEnd }) {
         }, 1000);
 
         return () => clearInterval(interval);
-    }, [isHost, auctionState.isSold, auctionState.timer, userData.roomId, auctionState]);
+    }, [isHost, auctionState.isSold, auctionState.timer, userData.roomId, auctionState, roomUsers]);
 
     const buyingTeam = auctionState.soldTo || auctionState.currentBidTeam || 'UNSOLD';
 
@@ -114,7 +150,7 @@ export default function Auction({ userData, onEnd }) {
     const isSold = auctionState.isSold;
     const teamColor = TEAM_COLORS[buyingTeam] || '#666';
 
-    const myPurse = 100.00; // Temporary mock purse
+    const myPurse = roomUsers[userData.name]?.purse !== undefined ? roomUsers[userData.name].purse : 100.00;
     const nextBidAmount = auctionState.currentBid ? auctionState.currentBid + 0.5 : parseFloat(activePlayer.basePrice);
 
     // Check if the current user represents a team, and if that team is currently leading the bid
@@ -218,23 +254,6 @@ export default function Auction({ userData, onEnd }) {
                                 disabled={!canBid}
                             >
                                 {isMyTeamLeading ? 'LEADING BID' : `BID ₹ ${nextBidAmount.toFixed(2)}Cr`}
-                            </button>
-                        )}
-                        {isHost && isSold && (
-                            <button className="btn-bid" style={{ padding: '0.5rem 2rem', background: '#3b82f6' }} onClick={() => {
-                                // Move to next player
-                                const nextIndex = (auctionState.currentPlayerIndex + 1) % PLAYERS_DATA.length;
-                                const nextPlayer = PLAYERS_DATA[nextIndex];
-                                set(ref(db, `rooms/${userData.roomId}/auctionState`), {
-                                    currentPlayerIndex: nextIndex,
-                                    currentBid: parseFloat(nextPlayer.basePrice),
-                                    currentBidTeam: null,
-                                    timer: 15,
-                                    isSold: false,
-                                    soldTo: null
-                                });
-                            }}>
-                                NEXT PLAYER
                             </button>
                         )}
                     </div>
