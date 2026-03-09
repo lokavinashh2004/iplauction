@@ -16,6 +16,19 @@ const TEAM_COLORS = {
     LSG: '#00AEEF'
 };
 
+const TEAM_FULL_NAMES = {
+    MI: 'Mumbai Indians',
+    CSK: 'Chennai Super Kings',
+    RCB: 'Royal Challengers Bengaluru',
+    KKR: 'Kolkata Knight Riders',
+    DC: 'Delhi Capitals',
+    PBKS: 'Punjab Kings',
+    RR: 'Rajasthan Royals',
+    SRH: 'Sunrisers Hyderabad',
+    GT: 'Gujarat Titans',
+    LSG: 'Lucknow Super Giants'
+};
+
 const IPL_LOGOS = {
     MI: 'https://upload.wikimedia.org/wikipedia/en/thumb/c/cd/Mumbai_Indians_Logo.svg/200px-Mumbai_Indians_Logo.svg.png',
     CSK: 'https://upload.wikimedia.org/wikipedia/en/thumb/2/2b/Chennai_Super_Kings_Logo.svg/200px-Chennai_Super_Kings_Logo.svg.png',
@@ -316,7 +329,7 @@ export default function Auction({ userData, onEnd }) {
                         <span style={{ color: '#a855f7' }}>🚀</span> {userData.team ? `Playing as ${userData.team}` : 'Play IPL Simulation Game!'} <span className="banner-tag bg-green">LIVE</span>
                     </span>
                     <span style={{ fontSize: '0.75rem', color: 'var(--text-tertiary)', marginTop: '0.25rem' }}>
-                        24/7 cricket simulation • Play now as {userData.team || 'your favorite team'}
+                        Play now as {userData.team ? <strong style={{ color: '#fff', fontWeight: 800 }}>{TEAM_FULL_NAMES[userData.team]}</strong> : 'your favorite team'}
                     </span>
                 </div>
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#a855f7" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4.5 16.5c-1.5 1.26-2 5-2 5s3.74-.5 5-2c.71-.84.7-2.13-.09-2.91a2.18 2.18 0 0 0-2.91-.09z"></path><path d="m12 15-3-3a22 22 0 0 1 3.86-12 2 2 0 0 1 2.9 0 22 22 0 0 1-12 3.86z"></path><path d="m15 12 3-3a22 22 0 0 0 12-3.86 2 2 0 0 0 0-2.9 22 22 0 0 0-3.86 12z"></path></svg>
