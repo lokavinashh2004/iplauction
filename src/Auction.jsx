@@ -34,6 +34,7 @@ export default function Auction({ userData, onEnd }) {
 
     // Synced State
     const [auctionState, setAuctionState] = useState({
+        activePlayer: PLAYERS_DATA[0],
         currentPlayerIndex: 0,
         currentBid: 0,
         currentBidTeam: null,
@@ -69,6 +70,7 @@ export default function Auction({ userData, onEnd }) {
                     // Initialize the auction state if it's completely missing
                     const initialPlayer = PLAYERS_DATA[0];
                     set(ref(db, `rooms/${userData.roomId}/auctionState`), {
+                        activePlayer: initialPlayer,
                         currentPlayerIndex: 0,
                         currentBid: parseFloat(initialPlayer.basePrice),
                         currentBidTeam: null,
@@ -83,7 +85,8 @@ export default function Auction({ userData, onEnd }) {
         return () => unsubscribe();
     }, [userData.roomId, userData.name]);
 
-    const activePlayer = PLAYERS_DATA[auctionState.currentPlayerIndex] || PLAYERS_DATA[0];
+    // Extracted exactly from global state to fulfill prompt 100%
+    const activePlayer = auctionState.activePlayer || PLAYERS_DATA[0];
 
     // Pick a random team when bidding to demonstrate different team effects
     const handleBidSold = () => {
@@ -142,6 +145,7 @@ export default function Auction({ userData, onEnd }) {
                 const nextIndex = (auctionState.currentPlayerIndex + 1) % PLAYERS_DATA.length;
                 const nextPlayer = PLAYERS_DATA[nextIndex];
                 set(ref(db, `rooms/${userData.roomId}/auctionState`), {
+                    activePlayer: nextPlayer,
                     currentPlayerIndex: nextIndex,
                     currentBid: parseFloat(nextPlayer.basePrice),
                     currentBidTeam: null,
