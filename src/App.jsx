@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { db } from './firebase';
-import { ref, onValue, get, remove, set } from 'firebase/database';
+import { ref, onValue, get, remove, set, update } from 'firebase/database';
 import './App.css';
 import Home from './Home';
 import Room from './Room';
@@ -28,28 +28,35 @@ function App() {
   useEffect(() => {
     if (!userData.roomId) return;
     const roomRef = ref(db, `rooms/${userData.roomId}`);
+
+    // Maintain a clean active listener, removed `currentPage` dependency to stop websocket reconnects
     const unsubscribe = onValue(roomRef, (snapshot) => {
       if (!snapshot.exists()) {
-        // Room implies it got deleted, force return to home
-        if (currentPage !== 'home') {
-          setCurrentPage('home');
-          setUserData(prev => ({ ...prev, roomId: '', team: null }));
-          window.location.hash = '';
-        }
+        setCurrentPage(prev => {
+          if (prev !== 'home') {
+            setTimeout(() => {
+              setUserData(u => ({ ...u, roomId: '', team: null }));
+              window.location.hash = '';
+            }, 0);
+            return 'home';
+          }
+          return prev;
+        });
         return;
       }
 
       const data = snapshot.val();
       setHostName(data.host || '');
 
-      if (data.status === 'auction') {
+      // Force to auction if running, using absolute safety checks
+      if (data.status === 'auction' && userData.name) {
         setCurrentPage(prev => prev !== 'auction' ? 'auction' : prev);
+      } else if (data.status === 'waiting' && userData.name) {
+        setCurrentPage(prev => prev !== 'room' ? 'room' : prev);
       }
 
       const users = data.users || {};
 
-      // Dynamic Host Reassignment
-      // If the registered host no longer exists in the users map, the next alphabetical user claims host
       if (data.host && !users[data.host] && users[userData.name]) {
         const remaining = Object.keys(users).sort();
         if (remaining[0] === userData.name) {
@@ -57,8 +64,9 @@ function App() {
         }
       }
     });
+
     return () => unsubscribe();
-  }, [userData.roomId, userData.name, currentPage]);
+  }, [userData.roomId, userData.name]);
 
   const leaveRoom = async () => {
     if (!userData.roomId || !userData.name) {
@@ -125,7 +133,10 @@ function App() {
           <div className="flex items-center" style={{ gap: '1rem' }}>
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#10b981" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12.55a11 11 0 0 1 14.08 0"></path><path d="M1.42 9a16 16 0 0 1 21.16 0"></path><path d="M8.53 16.11a6 6 0 0 1 6.95 0"></path><line x1="12" y1="20" x2="12.01" y2="20"></line></svg>
             {isHost && (
-              <button className="btn-solid-orange start-btn" onClick={() => set(ref(db, `rooms/${userData.roomId}/status`), 'auction')}>
+              <button
+                className="btn-solid-orange start-btn"
+                onClick={() => update(ref(db, `rooms/${userData.roomId}`), { status: 'auction' })}
+              >
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
                 Start
               </button>
