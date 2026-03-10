@@ -388,8 +388,13 @@ export default function Auction({ userData, onEnd }) {
                         <div style={{ fontSize: '0.65rem', width: '25px', color: '#555' }}>
                             {String(activePlayer.id).padStart(3, '0')}
                         </div>
-                        <div style={{ flex: 1, textAlign: 'center', fontSize: '0.75rem', letterSpacing: '0.5px', textTransform: 'uppercase' }}>
-                            {`${activePlayer.firstName} ${activePlayer.lastName}`}
+                        <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.75rem', letterSpacing: '0.5px', textTransform: 'uppercase' }}>
+                            <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{`${activePlayer.firstName} ${activePlayer.lastName}`}</span>
+                            {activePlayer.country && activePlayer.country !== 'IND' && (
+                                <span style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, background: '#e11d48', borderRadius: '50%', width: '13px', height: '13px', marginLeft: '4px', boxShadow: '0 1px 2px rgba(0,0,0,0.2)' }} title="Overseas Player">
+                                    <svg fill="white" viewBox="0 0 24 24" width="9" height="9"><path d="M21 16v-2l-8-5V3.5c0-.83-.67-1.5-1.5-1.5S10 2.67 10 3.5V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L13 19v-5.5l8 2.5z" /></svg>
+                                </span>
+                            )}
                         </div>
                         <div style={{ width: '16px', height: '16px', flexShrink: 0 }}>
                             <img src={IPL_LOGOS[buyingTeam]} alt={buyingTeam} style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
@@ -661,8 +666,13 @@ export default function Auction({ userData, onEnd }) {
                                                                     <div style={{ fontSize: '0.65rem', width: '25px', color: '#555' }}>
                                                                         {String(player.id).padStart(3, '0')}
                                                                     </div>
-                                                                    <div style={{ flex: 1, textAlign: 'center', fontSize: '0.75rem', letterSpacing: '0.5px', textTransform: 'uppercase' }}>
-                                                                        {player.name}
+                                                                    <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.75rem', letterSpacing: '0.5px', textTransform: 'uppercase' }}>
+                                                                        <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{player.name}</span>
+                                                                        {player.country && player.country !== 'IND' && (
+                                                                            <span style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, background: '#e11d48', borderRadius: '50%', width: '13px', height: '13px', marginLeft: '4px', boxShadow: '0 1px 2px rgba(0,0,0,0.2)' }} title="Overseas Player">
+                                                                                <svg fill="white" viewBox="0 0 24 24" width="9" height="9"><path d="M21 16v-2l-8-5V3.5c0-.83-.67-1.5-1.5-1.5S10 2.67 10 3.5V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L13 19v-5.5l8 2.5z" /></svg>
+                                                                            </span>
+                                                                        )}
                                                                     </div>
                                                                     <div style={{ width: '16px', height: '16px', flexShrink: 0 }}>
                                                                         <img src={IPL_LOGOS[userData.team]} alt="" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
@@ -727,8 +737,13 @@ export default function Auction({ userData, onEnd }) {
                                                                                 <div style={{ fontSize: '0.65rem', width: '25px', color: '#555' }}>
                                                                                     {String(player.id).padStart(3, '0')}
                                                                                 </div>
-                                                                                <div style={{ flex: 1, textAlign: 'center', fontSize: '0.75rem', letterSpacing: '0.5px', textTransform: 'uppercase' }}>
-                                                                                    {player.name}
+                                                                                <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.75rem', letterSpacing: '0.5px', textTransform: 'uppercase' }}>
+                                                                                    <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{player.name}</span>
+                                                                                    {player.country && player.country !== 'IND' && (
+                                                                                        <span style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, background: '#e11d48', borderRadius: '50%', width: '13px', height: '13px', marginLeft: '4px', boxShadow: '0 1px 2px rgba(0,0,0,0.2)' }} title="Overseas Player">
+                                                                                            <svg fill="white" viewBox="0 0 24 24" width="9" height="9"><path d="M21 16v-2l-8-5V3.5c0-.83-.67-1.5-1.5-1.5S10 2.67 10 3.5V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L13 19v-5.5l8 2.5z" /></svg>
+                                                                                        </span>
+                                                                                    )}
                                                                                 </div>
                                                                                 <div style={{ width: '16px', height: '16px', flexShrink: 0 }}>
                                                                                     <img src={IPL_LOGOS[teamName]} alt="" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
