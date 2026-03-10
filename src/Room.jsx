@@ -28,7 +28,7 @@ const TEAM_FULL_NAMES = {
     LSG: 'Lucknow'
 };
 
-export default function Room({ userData, setUserData }) {
+export default function Room({ userData, setUserData, isHost }) {
     const [activeTab, setActiveTab] = useState('settings');
 
     const handleTeamSelect = async (t) => {
@@ -172,18 +172,6 @@ export default function Room({ userData, setUserData }) {
             </div>
 
 
-            {/* Banner */}
-            <div className="banner-item purple mb-4 animate-fade-in" style={{ animationDelay: '0.3s' }}>
-                <div className="flex-col">
-                    <span className="flex items-center" style={{ gap: '0.5rem', fontWeight: 700 }}>
-                        <span style={{ color: '#a855f7' }}>🚀</span> Play IPL Simulation Game! <span className="banner-tag bg-green">LIVE</span>
-                    </span>
-                    <span style={{ fontSize: '0.75rem', color: 'var(--text-tertiary)', marginTop: '0.25rem' }}>
-                        24/7 cricket simulation • Play now at cricketdirector.com
-                    </span>
-                </div>
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#a855f7" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4.5 16.5c-1.5 1.26-2 5-2 5s3.74-.5 5-2c.71-.84.7-2.13-.09-2.91a2.18 2.18 0 0 0-2.91-.09z"></path><path d="m12 15-3-3a22 22 0 0 1 3.86-12 2 2 0 0 1 2.9 0 22 22 0 0 1-12 3.86z"></path><path d="m15 12 3-3a22 22 0 0 0 12-3.86 2 2 0 0 0 0-2.9 22 22 0 0 0-3.86 12z"></path></svg>
-            </div>
 
             {/* Tabs View */}
             <div className="room-card tabbed-card animate-fade-in" style={{ animationDelay: '0.4s' }}>
@@ -214,14 +202,16 @@ export default function Room({ userData, setUserData }) {
                                     <span style={{ color: '#a855f7', fontWeight: 700 }}>{timer}s</span>
                                 </div>
                                 <div style={{ fontSize: '0.75rem', color: 'var(--text-tertiary)', margin: '0.25rem 0 0.75rem' }}>
-                                    Time allowed for each player auction
+                                    {isHost ? 'Select the time allowed for each player auction' : '⚠ Only the host can change the timer'}
                                 </div>
                                 <div className="timer-grid">
                                     {[5, 10, 15, 20, 25].map(t => (
                                         <button
                                             key={t}
                                             className={`timer-btn ${timer === t ? 'active' : ''}`}
-                                            onClick={() => set(ref(db, `rooms/${userData.roomId}/settings/timer`), t)}
+                                            onClick={() => isHost && set(ref(db, `rooms/${userData.roomId}/settings/timer`), t)}
+                                            disabled={!isHost}
+                                            style={{ opacity: isHost ? 1 : 0.45, cursor: isHost ? 'pointer' : 'not-allowed' }}
                                         >
                                             {t}s
                                         </button>
