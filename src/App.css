@@ -611,6 +611,11 @@
   justify-content: center;
   border: 1px solid transparent;
   gap: 0.5rem;
+  transition: background 0.2s, border-color 0.2s;
+}
+
+.team-rect:hover:not([style*='not-allowed']) {
+  background-color: rgba(255, 255, 255, 0.04);
 }
 
 .team-rect.selected {
@@ -628,6 +633,165 @@
   font-size: 0.75rem;
   font-weight: 700;
   color: #ffffff;
+  transition: box-shadow 0.2s, transform 0.2s;
+}
+
+/* Team-color hover ring on circle */
+.team-rect:hover .team-circle {
+  transform: scale(1.12);
+}
+
+.team-rect:hover .team-circle.mi {
+  box-shadow: 0 0 0 3px #004BA0;
+}
+
+.team-rect:hover .team-circle.csk {
+  box-shadow: 0 0 0 3px #FCCA06;
+}
+
+.team-rect:hover .team-circle.rcb {
+  box-shadow: 0 0 0 3px #E4002B;
+}
+
+.team-rect:hover .team-circle.kkr {
+  box-shadow: 0 0 0 3px #3A225D;
+}
+
+.team-rect:hover .team-circle.dc {
+  box-shadow: 0 0 0 3px #0078BC;
+}
+
+.team-rect:hover .team-circle.pbks {
+  box-shadow: 0 0 0 3px #ED1C24;
+}
+
+.team-rect:hover .team-circle.rr {
+  box-shadow: 0 0 0 3px #E8508A;
+}
+
+.team-rect:hover .team-circle.srh {
+  box-shadow: 0 0 0 3px #F7620C;
+}
+
+.team-rect:hover .team-circle.gt {
+  box-shadow: 0 0 0 3px #1D3461;
+}
+
+.team-rect:hover .team-circle.lsg {
+  box-shadow: 0 0 0 3px #A72056;
+}
+
+/* Selected state ring — always visible */
+.team-rect.selected .team-circle.mi {
+  box-shadow: 0 0 0 3px #004BA0;
+}
+
+.team-rect.selected .team-circle.csk {
+  box-shadow: 0 0 0 3px #FCCA06;
+}
+
+.team-rect.selected .team-circle.rcb {
+  box-shadow: 0 0 0 3px #E4002B;
+}
+
+.team-rect.selected .team-circle.kkr {
+  box-shadow: 0 0 0 3px #3A225D;
+}
+
+.team-rect.selected .team-circle.dc {
+  box-shadow: 0 0 0 3px #0078BC;
+}
+
+.team-rect.selected .team-circle.pbks {
+  box-shadow: 0 0 0 3px #ED1C24;
+}
+
+.team-rect.selected .team-circle.rr {
+  box-shadow: 0 0 0 3px #E8508A;
+}
+
+.team-rect.selected .team-circle.srh {
+  box-shadow: 0 0 0 3px #F7620C;
+}
+
+.team-rect.selected .team-circle.gt {
+  box-shadow: 0 0 0 3px #1D3461;
+}
+
+.team-rect.selected .team-circle.lsg {
+  box-shadow: 0 0 0 3px #A72056;
+}
+
+/* Home.jsx team-logo-btn (create room team selection) */
+.team-logo-btn {
+  border-radius: 50% !important;
+  transition: box-shadow 0.2s, transform 0.2s !important;
+  border: 2px solid transparent !important;
+}
+
+.team-logo-btn:hover,
+.team-logo-btn.selected {
+  transform: scale(1.12);
+}
+
+.team-logo-btn[title='MI']:hover,
+.team-logo-btn[title='MI'].selected {
+  box-shadow: 0 0 0 3px #004BA0 !important;
+  border-color: #004BA0 !important;
+}
+
+.team-logo-btn[title='CSK']:hover,
+.team-logo-btn[title='CSK'].selected {
+  box-shadow: 0 0 0 3px #FCCA06 !important;
+  border-color: #FCCA06 !important;
+}
+
+.team-logo-btn[title='RCB']:hover,
+.team-logo-btn[title='RCB'].selected {
+  box-shadow: 0 0 0 3px #E4002B !important;
+  border-color: #E4002B !important;
+}
+
+.team-logo-btn[title='KKR']:hover,
+.team-logo-btn[title='KKR'].selected {
+  box-shadow: 0 0 0 3px #3A225D !important;
+  border-color: #3A225D !important;
+}
+
+.team-logo-btn[title='DC']:hover,
+.team-logo-btn[title='DC'].selected {
+  box-shadow: 0 0 0 3px #0078BC !important;
+  border-color: #0078BC !important;
+}
+
+.team-logo-btn[title='PBKS']:hover,
+.team-logo-btn[title='PBKS'].selected {
+  box-shadow: 0 0 0 3px #ED1C24 !important;
+  border-color: #ED1C24 !important;
+}
+
+.team-logo-btn[title='RR']:hover,
+.team-logo-btn[title='RR'].selected {
+  box-shadow: 0 0 0 3px #E8508A !important;
+  border-color: #E8508A !important;
+}
+
+.team-logo-btn[title='SRH']:hover,
+.team-logo-btn[title='SRH'].selected {
+  box-shadow: 0 0 0 3px #F7620C !important;
+  border-color: #F7620C !important;
+}
+
+.team-logo-btn[title='GT']:hover,
+.team-logo-btn[title='GT'].selected {
+  box-shadow: 0 0 0 3px #1D3461 !important;
+  border-color: #1D3461 !important;
+}
+
+.team-logo-btn[title='LSG']:hover,
+.team-logo-btn[title='LSG'].selected {
+  box-shadow: 0 0 0 3px #A72056 !important;
+  border-color: #A72056 !important;
 }
 
 .team-rect-name {

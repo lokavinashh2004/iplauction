@@ -178,22 +178,29 @@ export default function Home({ userData, setUserData, onJoin }) {
                         <div className="form-group">
                             <label className="form-label">Choose Your Team</label>
                             <div className="team-grid">
-                                {IPL_TEAMS.map(t => (
-                                    <button
-                                        key={t}
-                                        className={`team-btn team-logo-btn ${userData.team === t ? 'selected' : ''}`}
-                                        onClick={() => setUserData({ ...userData, team: t })}
-                                        title={t}
-                                        style={{
-                                            backgroundColor: 'white',
-                                            overflow: 'hidden',
-                                            padding: '0.2rem',
-                                            cursor: 'pointer'
-                                        }}
-                                    >
-                                        <img src={IPL_LOGOS[t]} alt={t} style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
-                                    </button>
-                                ))}
+                                {IPL_TEAMS.map(t => {
+                                    const TEAM_COLORS_MAP = { MI: '#004BA0', CSK: '#FCCA06', RCB: '#E4002B', KKR: '#3A225D', DC: '#0078BC', PBKS: '#ED1C24', RR: '#E8508A', SRH: '#F7620C', GT: '#1D3461', LSG: '#A72056' };
+                                    const tc = TEAM_COLORS_MAP[t] || '#f59e0b';
+                                    const isSelected = userData.team === t;
+                                    return (
+                                        <button
+                                            key={t}
+                                            className={`team-btn team-logo-btn ${isSelected ? 'selected' : ''}`}
+                                            onClick={() => setUserData({ ...userData, team: t })}
+                                            title={t}
+                                            style={{
+                                                backgroundColor: 'white',
+                                                overflow: 'hidden',
+                                                padding: '0.2rem',
+                                                cursor: 'pointer',
+                                                boxShadow: isSelected ? `0 0 0 3px ${tc}` : undefined,
+                                                borderColor: isSelected ? tc : 'transparent'
+                                            }}
+                                        >
+                                            <img src={IPL_LOGOS[t]} alt={t} style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+                                        </button>
+                                    );
+                                })}
                             </div>
                         </div>
 

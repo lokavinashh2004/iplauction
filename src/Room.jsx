@@ -154,17 +154,36 @@ export default function Room({ userData, setUserData, isHost }) {
                         const userName = isSelected ? userEntry[0] : '';
                         const isMyTeam = userData.team === t;
 
+                        const TEAM_COLORS_MAP = { MI: '#004BA0', CSK: '#FCCA06', RCB: '#E4002B', KKR: '#3A225D', DC: '#0078BC', PBKS: '#ED1C24', RR: '#E8508A', SRH: '#F7620C', GT: '#1D3461', LSG: '#A72056' };
+                        const tc = TEAM_COLORS_MAP[t] || '#f59e0b';
+
                         return (
                             <div
                                 key={t}
                                 className={`team-rect ${isSelected ? 'selected' : ''}`}
                                 onClick={() => handleTeamSelect(t)}
-                                style={{ cursor: isSelected && !isMyTeam ? 'not-allowed' : 'pointer', opacity: isSelected && !isMyTeam ? 0.7 : 1 }}
+                                style={{
+                                    cursor: isSelected && !isMyTeam ? 'not-allowed' : 'pointer',
+                                    opacity: isSelected && !isMyTeam ? 0.7 : 1,
+                                    borderColor: isMyTeam ? tc : isSelected ? 'rgba(255,255,255,0.1)' : 'transparent',
+                                    background: isMyTeam ? `${tc}15` : undefined
+                                }}
                             >
-                                <div className={`team-circle ${t.toLowerCase()}`} title={t} style={{ backgroundColor: 'white', overflow: 'hidden', padding: '0.15rem' }}>
+                                <div
+                                    className={`team-circle ${t.toLowerCase()}`}
+                                    title={t}
+                                    style={{
+                                        backgroundColor: 'white',
+                                        overflow: 'hidden',
+                                        padding: '0.15rem',
+                                        width: '3rem',
+                                        height: '3rem',
+                                        boxShadow: isMyTeam ? `0 0 0 3px ${tc}` : undefined
+                                    }}
+                                >
                                     <img src={IPL_LOGOS[t]} alt={t} style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
                                 </div>
-                                {isSelected && <div className="team-rect-name">{userName}</div>}
+                                {isSelected && <div className="team-rect-name" style={{ color: isMyTeam ? tc : undefined }}>{userName}</div>}
                             </div>
                         );
                     })}
