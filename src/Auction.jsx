@@ -190,7 +190,8 @@ export default function Auction({ userData, onEnd }) {
                 name: `${currentPlayer.firstName} ${currentPlayer.lastName}`,
                 role: currentPlayer.role,
                 boughtFor: auctionState.currentBid || parseFloat(currentPlayer.basePrice),
-                image: currentPlayer.imageUrl
+                image: currentPlayer.imageUrl,
+                country: currentPlayer.country
             };
 
             if (finalBuyer !== 'UNSOLD') {
@@ -297,8 +298,14 @@ export default function Auction({ userData, onEnd }) {
     const mySquadSize = userData.team && allSquads[userData.team] ? allSquads[userData.team].length : 0;
     const isSquadFull = mySquadSize >= 25;
 
-    // The user can only bid if they are a team, they aren't currently leading, they have enough purse, the game isn't paused, and the squad isn't full
-    const canBid = Boolean(userData.team && !isMyTeamLeading && nextBidAmount <= myPurse && !isPaused && !isSquadFull);
+    const myOverseasCount = userData.team && allSquads[userData.team]
+        ? allSquads[userData.team].filter(p => p.country && p.country !== 'IND').length
+        : 0;
+    const isPlayerOverseas = activePlayer.country && activePlayer.country !== 'IND';
+    const isOverseasLimitReached = myOverseasCount >= 8 && isPlayerOverseas;
+
+    // The user can only bid if they are a team, they aren't currently leading, they have enough purse, the game isn't paused, the squad isn't full, and the overseas limit isn't reached
+    const canBid = Boolean(userData.team && !isMyTeamLeading && nextBidAmount <= myPurse && !isPaused && !isSquadFull && !isOverseasLimitReached);
 
     const handlePlaceBid = () => {
         if (!canBid || isSold) return;
@@ -343,6 +350,7 @@ export default function Auction({ userData, onEnd }) {
                                         <div style={{ fontWeight: 900, color: TEAM_COLORS[teamName], fontSize: '1.2rem' }}>{teamName}</div>
                                     </div>
                                     <div style={{ fontSize: '0.9rem', color: '#ccc', marginBottom: '0.25rem' }}>Players: <span style={{ color: '#fff', fontWeight: 'bold' }}>{squadLen}/25</span></div>
+                                    <div style={{ fontSize: '0.9rem', color: '#ccc', marginBottom: '0.25rem' }}>Overseas: <span style={{ color: '#fff', fontWeight: 'bold' }}>{allSquads[teamName] ? allSquads[teamName].filter(p => p.country && p.country !== 'IND').length : 0}/8</span></div>
                                     <div style={{ fontSize: '0.85rem', fontWeight: 800, color: isComplete ? '#10b981' : '#ef4444' }}>
                                         {isComplete ? '✓ COMPLETE SQUAD' : '⚠ INCOMPLETE SQUAD'}
                                     </div>
@@ -517,12 +525,12 @@ export default function Auction({ userData, onEnd }) {
                                     padding: '0.5rem 2rem',
                                     opacity: canBid ? 1 : 0.5,
                                     cursor: canBid ? 'pointer' : 'not-allowed',
-                                    background: isSquadFull ? '#991b1b' : isMyTeamLeading ? '#4b5563' : isPaused ? '#374151' : ''
+                                    background: (isSquadFull || isOverseasLimitReached) ? '#991b1b' : isMyTeamLeading ? '#4b5563' : isPaused ? '#374151' : ''
                                 }}
                                 onClick={handlePlaceBid}
                                 disabled={!canBid}
                             >
-                                {isSquadFull ? 'SQUAD FULL (25/25)' : isPaused ? 'PAUSED' : isMyTeamLeading ? 'LEADING BID' : `BID ₹ ${nextBidAmount.toFixed(2)}Cr`}
+                                {isSquadFull ? 'SQUAD FULL (25/25)' : isOverseasLimitReached ? 'OVERSEAS LIMIT REACHED' : isPaused ? 'PAUSED' : isMyTeamLeading ? 'LEADING BID' : `BID ₹ ${nextBidAmount.toFixed(2)}Cr`}
                             </button>
                         )}
                     </div>
@@ -616,6 +624,8 @@ export default function Auction({ userData, onEnd }) {
                                                 </span>
                                                 <span style={{ color: '#555' }}>|</span>
                                                 <span style={{ color: mySquadSize >= 25 ? '#ef4444' : '#aaa', fontWeight: 600 }}>({mySquadSize}/25)</span>
+                                                <span style={{ color: '#555' }}>|</span>
+                                                <span style={{ color: myOverseasCount >= 8 ? '#ef4444' : '#aaa', fontWeight: 600 }}>OS: {myOverseasCount}/8</span>
                                             </div>
                                         )}
                                     </div>
@@ -683,6 +693,7 @@ export default function Auction({ userData, onEnd }) {
                                                         <img src={IPL_LOGOS[teamName]} style={{ width: '14px', height: '14px' }} alt="" />
                                                         <span style={{ fontSize: '0.75rem', fontWeight: 800, color: TEAM_COLORS[teamName] || '#fff' }}>{teamName}</span>
                                                         <span style={{ marginLeft: '0.5rem', fontSize: '0.65rem', color: squad.length >= 25 ? '#ef4444' : '#888', fontWeight: 600 }}>({squad.length}/25)</span>
+                                                        <span style={{ marginLeft: '0.5rem', fontSize: '0.65rem', color: squad.filter(p => p.country && p.country !== 'IND').length >= 8 ? '#ef4444' : '#888', fontWeight: 600 }}>OS: {squad.filter(p => p.country && p.country !== 'IND').length}/8</span>
                                                         <div style={{ marginLeft: 'auto', fontSize: '0.7rem', fontWeight: 800, color: '#10b981' }}>
                                                             <AnimatedPurse amount={getTeamPurse(teamName)} />
                                                         </div>
