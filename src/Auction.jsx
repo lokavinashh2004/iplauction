@@ -320,8 +320,13 @@ export default function Auction({ userData, onEnd }) {
                                 <div className="bid-label">CURRENT BID</div>
                                 <div className="bid-value">₹ {(auctionState.currentBid || 0).toFixed(2)}Cr</div>
                                 {auctionState.currentBidTeam && (
-                                    <div style={{ fontSize: '0.65rem', color: isSold ? '#fff' : TEAM_COLORS[auctionState.currentBidTeam], fontWeight: 700, marginTop: '2px' }}>
-                                        {auctionState.currentBidTeam} leads
+                                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.3rem', marginTop: '4px' }}>
+                                        <div style={{ width: '16px', height: '16px', background: '#fff', borderRadius: '50%', padding: '2px', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 0 4px rgba(0,0,0,0.3)' }}>
+                                            <img src={IPL_LOGOS[auctionState.currentBidTeam]} alt={auctionState.currentBidTeam} style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+                                        </div>
+                                        <div style={{ fontSize: '0.75rem', color: isSold ? '#fff' : TEAM_COLORS[auctionState.currentBidTeam], fontWeight: 800, textShadow: isSold ? 'none' : '0px 1px 2px rgba(0,0,0,0.5)' }}>
+                                            {auctionState.currentBidTeam} leads
+                                        </div>
                                     </div>
                                 )}
                             </div>
