@@ -324,11 +324,12 @@ export default function Auction({ userData, onEnd }) {
                                         <div style={{
                                             display: 'inline-flex',
                                             alignItems: 'center',
-                                            background: 'linear-gradient(180deg, #FFE600 0%, #FFB800 100%)',
+                                            background: TEAM_COLORS[auctionState.currentBidTeam] || '#FFB800',
+                                            backgroundImage: 'linear-gradient(180deg, rgba(255,255,255,0.25) 0%, rgba(0,0,0,0.15) 100%)',
                                             borderRadius: '999px',
                                             padding: '3px 16px 3px 3px',
-                                            boxShadow: '0 0 12px rgba(255, 215, 0, 0.6), inset 0 2px 4px rgba(255, 255, 255, 0.6), inset 0 -2px 4px rgba(200, 100, 0, 0.4)',
-                                            border: '1px solid #FFF59D'
+                                            boxShadow: `0 0 12px ${TEAM_COLORS[auctionState.currentBidTeam] || '#FFB800'}, inset 0 2px 4px rgba(255, 255, 255, 0.4), inset 0 -2px 4px rgba(0, 0, 0, 0.3)`,
+                                            border: '1px solid rgba(255,255,255,0.3)'
                                         }}>
                                             <div style={{
                                                 width: '32px',
@@ -346,11 +347,12 @@ export default function Auction({ userData, onEnd }) {
                                             </div>
                                             <div style={{
                                                 fontSize: '1.05rem',
-                                                color: '#0A2342',
+                                                color: auctionState.currentBidTeam === 'CSK' ? '#0A2342' : '#FFFFFF',
                                                 fontWeight: 900,
                                                 letterSpacing: '0.5px',
                                                 marginLeft: '8px',
-                                                textTransform: 'uppercase'
+                                                textTransform: 'uppercase',
+                                                textShadow: auctionState.currentBidTeam === 'CSK' ? 'none' : '0 1px 2px rgba(0,0,0,0.5)'
                                             }}>
                                                 {auctionState.currentBidTeam} LEADING
                                             </div>
