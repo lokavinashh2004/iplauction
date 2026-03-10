@@ -46,7 +46,7 @@ export default function Home({ userData, setUserData, onJoin }) {
             return;
         }
 
-        const roomId = isCreating ? Math.random().toString(36).substring(2, 7).toUpperCase() : joinRoomId;
+        const roomId = isCreating ? Math.random().toString(36).substring(2, 7).toUpperCase() : joinRoomId.toUpperCase();
 
         if (!isCreating && !joinRoomId) {
             alert("Please enter a room code to join!");
@@ -178,9 +178,12 @@ export default function Home({ userData, setUserData, onJoin }) {
                         className="form-input"
                         placeholder="Enter 6-character Room Code"
                         value={joinRoomId}
-                        onChange={(e) => {
-                            setJoinRoomId(e.target.value.toUpperCase());
-                        }}
+                        onChange={(e) => setJoinRoomId(e.target.value)}
+                        autoCapitalize="characters"
+                        autoComplete="off"
+                        autoCorrect="off"
+                        spellCheck="false"
+                        style={{ textTransform: 'uppercase' }}
                     />
                 </div>
 

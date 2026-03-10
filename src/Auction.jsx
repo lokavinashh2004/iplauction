@@ -58,6 +58,8 @@ export default function Auction({ userData, onEnd }) {
 
     const [isHost, setIsHost] = useState(false);
     const [roomUsers, setRoomUsers] = useState({});
+    const [activityLog, setActivityLog] = useState([]);
+    const [allSquads, setAllSquads] = useState({});
 
     // Sync auction state from Firebase
     useEffect(() => {
@@ -75,6 +77,19 @@ export default function Auction({ userData, onEnd }) {
 
                 if (data.users) {
                     setRoomUsers(data.users);
+                }
+
+                if (data.activityLog) {
+                    const logs = Array.isArray(data.activityLog) ? data.activityLog : Object.values(data.activityLog);
+                    setActivityLog(logs.sort((a, b) => b.timestamp - a.timestamp));
+                } else {
+                    setActivityLog([]);
+                }
+
+                if (data.squads) {
+                    setAllSquads(data.squads);
+                } else {
+                    setAllSquads({});
                 }
 
                 if (data.auctionState) {
@@ -152,6 +167,21 @@ export default function Auction({ userData, onEnd }) {
                     set(ref(db, `rooms/${userData.roomId}/unsold`), [...unsoldList, playerSnapshot]);
                 });
             }
+
+            // Activity log entry
+            const logEntry = {
+                id: Date.now(),
+                timestamp: Date.now(),
+                playerName: `${currentPlayer.firstName} ${currentPlayer.lastName}`,
+                status: finalBuyer === 'UNSOLD' ? 'UNSOLD' : 'SOLD',
+                team: finalBuyer === 'UNSOLD' ? null : finalBuyer,
+                price: finalBuyer === 'UNSOLD' ? null : (auctionState.currentBid || parseFloat(currentPlayer.basePrice)),
+            };
+
+            get(ref(db, `rooms/${userData.roomId}/activityLog`)).then(snap => {
+                const existingLogs = snap.val() ? (Array.isArray(snap.val()) ? snap.val() : Object.values(snap.val())) : [];
+                set(ref(db, `rooms/${userData.roomId}/activityLog`), [logEntry, ...existingLogs].slice(0, 50));
+            });
 
             // After a 3 second delay, load the next player
             setTimeout(() => {
@@ -340,15 +370,15 @@ export default function Auction({ userData, onEnd }) {
                 <div className="room-tabs flex-wrap">
                     <button className={`room-tab small ${activeTab === 'activity' ? 'active-orange full-bg' : ''}`} onClick={() => setActiveTab('activity')}>
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>
-                        Activity <span className="tab-badge">9</span>
+                        Activity <span className="tab-badge">{activityLog.length}</span>
                     </button>
                     <button className={`room-tab small ${activeTab === 'squad' ? 'active-neutral' : ''}`} onClick={() => setActiveTab('squad')}>
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="8" width="18" height="12" rx="2"></rect><path d="M16 8V6a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"></path></svg>
-                        Squad <span className="tab-badge">20</span>
+                        My Squad <span className="tab-badge">{userData.team && allSquads[userData.team] ? allSquads[userData.team].length : 0}</span>
                     </button>
-                    <button className={`room-tab small ${activeTab === 'community' ? 'active-neutral' : ''}`} onClick={() => setActiveTab('community')}>
+                    <button className={`room-tab small ${activeTab === 'others_squad' ? 'active-neutral' : ''}`} onClick={() => setActiveTab('others_squad')}>
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
-                        Community
+                        Others Squad
                     </button>
                     <button className={`room-tab small ${activeTab === 'settings' ? 'active-purple' : ''}`} onClick={() => setActiveTab('settings')}>
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
@@ -358,22 +388,139 @@ export default function Auction({ userData, onEnd }) {
 
                 <div className="tab-content" style={{ minHeight: '300px' }}>
                     {activeTab === 'activity' && (
-                        <div className="activity-feed">
-                            <div className="flex items-center justify-center h-full w-full" style={{ padding: '2rem 0' }}>
-                                <span style={{ color: 'var(--text-tertiary)' }}>No recent activity.</span>
-                            </div>
+                        <div className="activity-feed" style={{ padding: '0 0.5rem', maxHeight: '300px', overflowY: 'auto' }}>
+                            {activityLog.length === 0 ? (
+                                <div className="flex items-center justify-center h-full w-full" style={{ padding: '2rem 0' }}>
+                                    <span style={{ color: 'var(--text-tertiary)' }}>No recent activity.</span>
+                                </div>
+                            ) : (
+                                <div className="flex-col" style={{ gap: '0.5rem', paddingTop: '0.5rem' }}>
+                                    {activityLog.map(log => (
+                                        <div key={log.id} style={{
+                                            background: '#1a1a1a',
+                                            padding: '0.75rem 1rem',
+                                            borderRadius: '8px',
+                                            borderLeft: `4px solid ${log.status === 'SOLD' ? TEAM_COLORS[log.team] || '#10b981' : '#ef4444'}`,
+                                            display: 'flex',
+                                            justifyContent: 'space-between',
+                                            alignItems: 'center'
+                                        }}>
+                                            <div className="flex-col-start">
+                                                <span style={{ fontWeight: 600, color: '#fff', fontSize: '0.9rem' }}>{log.playerName}</span>
+                                                <span style={{ fontSize: '0.75rem', color: 'var(--text-tertiary)' }}>
+                                                    {new Date(log.timestamp).toLocaleTimeString()}
+                                                </span>
+                                            </div>
+                                            <div style={{ textAlign: 'right' }}>
+                                                {log.status === 'SOLD' ? (
+                                                    <>
+                                                        <div style={{ color: TEAM_COLORS[log.team] || '#10b981', fontWeight: 800, fontSize: '0.9rem' }}>
+                                                            {log.team}
+                                                        </div>
+                                                        <div style={{ color: '#fff', fontSize: '0.8rem', fontWeight: 600 }}>
+                                                            ₹ {log.price.toFixed(2)} Cr
+                                                        </div>
+                                                    </>
+                                                ) : (
+                                                    <div style={{ color: '#ef4444', fontWeight: 800, fontSize: '0.9rem' }}>
+                                                        UNSOLD
+                                                    </div>
+                                                )}
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
                         </div>
                     )}
 
                     {activeTab === 'squad' && (
-                        <div className="squad-panel flex items-center justify-center h-full">
-                            <span style={{ color: 'var(--text-tertiary)' }}>No players in squad yet.</span>
+                        <div className="squad-panel" style={{ padding: '0 0.5rem', maxHeight: '300px', overflowY: 'auto' }}>
+                            {(!userData.team || !allSquads[userData.team] || allSquads[userData.team].length === 0) ? (
+                                <div className="flex items-center justify-center h-full w-full" style={{ padding: '2rem 0' }}>
+                                    <span style={{ color: 'var(--text-tertiary)' }}>No players in your squad yet.</span>
+                                </div>
+                            ) : (
+                                <div className="flex-col" style={{ gap: '0.75rem', paddingTop: '0.5rem' }}>
+                                    {allSquads[userData.team].map(player => (
+                                        <div key={player.id} style={{
+                                            background: '#1a1a1a',
+                                            padding: '0.5rem',
+                                            borderRadius: '8px',
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            gap: '1rem',
+                                            borderLeft: `4px solid ${TEAM_COLORS[userData.team] || '#10b981'}`
+                                        }}>
+                                            <div style={{ width: '40px', height: '40px', borderRadius: '50%', background: '#333', overflow: 'hidden', flexShrink: 0 }}>
+                                                <img src={player.image} alt={player.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                                            </div>
+                                            <div className="flex-col-start" style={{ flex: 1 }}>
+                                                <span style={{ fontWeight: 600, color: '#fff', fontSize: '0.9rem' }}>{player.name}</span>
+                                                <span style={{ fontSize: '0.75rem', color: 'var(--text-tertiary)' }}>{player.role}</span>
+                                            </div>
+                                            <div style={{ textAlign: 'right', paddingRight: '0.5rem' }}>
+                                                <div style={{ color: '#fff', fontSize: '0.9rem', fontWeight: 800 }}>
+                                                    ₹ {player.boughtFor.toFixed(2)} Cr
+                                                </div>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
                         </div>
                     )}
 
-                    {activeTab === 'community' && (
-                        <div className="community-panel flex items-center justify-center h-full">
-                            <span style={{ color: 'var(--text-tertiary)' }}>Community features coming soon.</span>
+                    {activeTab === 'others_squad' && (
+                        <div className="community-panel" style={{ padding: '0 0.5rem', maxHeight: '300px', overflowY: 'auto' }}>
+                            {Object.entries(allSquads).filter(([teamName]) => teamName !== userData.team).length === 0 ? (
+                                <div className="flex items-center justify-center h-full w-full" style={{ padding: '2rem 0' }}>
+                                    <span style={{ color: 'var(--text-tertiary)' }}>No players bought by other teams yet.</span>
+                                </div>
+                            ) : (
+                                <div className="flex-col" style={{ gap: '1.5rem', paddingTop: '0.5rem' }}>
+                                    {Object.entries(allSquads)
+                                        .filter(([teamName]) => teamName !== userData.team)
+                                        .map(([teamName, squad]) => (
+                                            <div key={teamName} className="flex-col" style={{ gap: '0.5rem' }}>
+                                                <div className="flex items-center" style={{ gap: '0.5rem', borderBottom: `2px solid ${TEAM_COLORS[teamName] || '#fff'}`, paddingBottom: '0.25rem' }}>
+                                                    <div style={{ width: '20px', height: '20px' }}>
+                                                        <img src={IPL_LOGOS[teamName]} alt={teamName} style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+                                                    </div>
+                                                    <span style={{ fontWeight: 800, color: TEAM_COLORS[teamName] || '#fff' }}>{teamName}</span>
+                                                    <span style={{ color: 'var(--text-tertiary)', fontSize: '0.8rem', marginLeft: 'auto' }}>
+                                                        {squad.length} Players
+                                                    </span>
+                                                </div>
+                                                <div className="flex-col" style={{ gap: '0.5rem' }}>
+                                                    {squad.map(player => (
+                                                        <div key={player.id} style={{
+                                                            background: '#1a1a1a',
+                                                            padding: '0.5rem',
+                                                            borderRadius: '6px',
+                                                            display: 'flex',
+                                                            alignItems: 'center',
+                                                            gap: '0.75rem'
+                                                        }}>
+                                                            <div style={{ width: '32px', height: '32px', borderRadius: '50%', background: '#333', overflow: 'hidden', flexShrink: 0 }}>
+                                                                <img src={player.image} alt={player.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                                                            </div>
+                                                            <div className="flex-col-start" style={{ flex: 1 }}>
+                                                                <span style={{ fontWeight: 600, color: '#e5e7eb', fontSize: '0.85rem' }}>{player.name}</span>
+                                                                <span style={{ fontSize: '0.7rem', color: 'var(--text-tertiary)' }}>{player.role}</span>
+                                                            </div>
+                                                            <div style={{ textAlign: 'right', paddingRight: '0.5rem' }}>
+                                                                <div style={{ color: '#10b981', fontSize: '0.85rem', fontWeight: 700 }}>
+                                                                    ₹ {player.boughtFor.toFixed(2)} Cr
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                        ))}
+                                </div>
+                            )}
                         </div>
                     )}
 
