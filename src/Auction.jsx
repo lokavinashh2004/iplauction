@@ -442,8 +442,18 @@ export default function Auction({ userData, onEnd }) {
                         </div>
 
                         {userData.team === auctionState.rtmTeam ? (
-                            <div style={{ display: 'flex', gap: '1rem', justifyContent: 'center' }}>
-                                <button className="btn-solid-green" onClick={handleRtmAccept} style={{ flex: 1, padding: '0.8rem', fontSize: '1.1rem', fontWeight: 800 }}>USE RTM</button>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', alignItems: 'stretch' }}>
+                                {myRtms > 0 && myPurse >= auctionState.currentBid && mySquadSize < 25 && !(isPlayerOverseas && myOverseasCount >= 8) ? (
+                                    <button className="btn-solid-green" onClick={handleRtmAccept} style={{ flex: 1, padding: '0.8rem', fontSize: '1.1rem', fontWeight: 800 }}>USE RTM</button>
+                                ) : (
+                                    <button className="btn-solid-green" disabled style={{ flex: 1, padding: '0.8rem', fontSize: '1.1rem', fontWeight: 800, opacity: 0.5, cursor: 'not-allowed', background: '#991b1b' }}>
+                                        {myRtms <= 0 ? 'NO RTM CARDS LEFT' :
+                                            myPurse < auctionState.currentBid ? 'NOT ENOUGH PURSE' :
+                                                mySquadSize >= 25 ? 'SQUAD FULL (25/25)' :
+                                                    'OVERSEAS LIMIT REACHED'
+                                        }
+                                    </button>
+                                )}
                                 <button className="btn-solid-red" onClick={handleRtmDecline} style={{ flex: 1, padding: '0.8rem', fontSize: '1.1rem', fontWeight: 800 }}>DECLINE</button>
                             </div>
                         ) : (
