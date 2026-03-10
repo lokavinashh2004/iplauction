@@ -25,6 +25,7 @@ function App() {
   });
 
   const [hostName, setHostName] = useState('');
+  const [isPaused, setIsPaused] = useState(false);
 
   useEffect(() => {
     if (!userData.roomId || !userData.hasJoined) return;
@@ -49,11 +50,16 @@ function App() {
       const data = snapshot.val();
       setHostName(data.host || '');
 
-      // Force to auction if running, using absolute safety checks
       if (data.status === 'auction' && userData.name) {
         setCurrentPage(prev => prev !== 'auction' ? 'auction' : prev);
       } else if (data.status === 'waiting' && userData.name) {
         setCurrentPage(prev => prev !== 'room' ? 'room' : prev);
+      }
+
+      if (data.settings && data.settings.isPaused !== undefined) {
+        setIsPaused(data.settings.isPaused);
+      } else {
+        setIsPaused(false);
       }
 
       const users = data.users || {};
@@ -161,7 +167,19 @@ function App() {
             <div className="flex items-center" style={{ gap: '0.75rem', flexWrap: 'wrap', justifyContent: 'center' }}>
               {isHost && (
                 <>
-                  <button className="btn-outline-yellow"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="6" y="4" width="4" height="16"></rect><rect x="14" y="4" width="4" height="16"></rect></svg> Pause</button>
+                  <button
+                    className="btn-outline-yellow"
+                    onClick={() => update(ref(db, `rooms/${userData.roomId}/settings`), { isPaused: !isPaused })}
+                  >
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      {isPaused ? (
+                        <polygon points="5 3 19 12 5 21 5 3"></polygon>
+                      ) : (
+                        <><rect x="6" y="4" width="4" height="16"></rect><rect x="14" y="4" width="4" height="16"></rect></>
+                      )}
+                    </svg>
+                    {isPaused ? 'Resume' : 'Pause'}
+                  </button>
                   <button className="btn-outline-red" onClick={leaveRoom}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><circle cx="12" cy="12" r="3"></circle></svg> End</button>
                 </>
               )}

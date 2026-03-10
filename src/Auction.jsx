@@ -61,6 +61,7 @@ export default function Auction({ userData, onEnd }) {
     const [activityLog, setActivityLog] = useState([]);
     const [allSquads, setAllSquads] = useState({});
     const [roomTimerSetting, setRoomTimerSetting] = useState(15);
+    const [isPaused, setIsPaused] = useState(false);
 
     // Sync auction state from Firebase
     useEffect(() => {
@@ -95,6 +96,12 @@ export default function Auction({ userData, onEnd }) {
 
                 if (data.settings && data.settings.timer) {
                     setRoomTimerSetting(data.settings.timer);
+                }
+
+                if (data.settings && data.settings.isPaused !== undefined) {
+                    setIsPaused(data.settings.isPaused);
+                } else {
+                    setIsPaused(false);
                 }
 
                 if (data.auctionState) {
@@ -132,7 +139,7 @@ export default function Auction({ userData, onEnd }) {
 
     // Host exclusively drives the game clock to prevent client drift
     useEffect(() => {
-        if (!isHost || auctionState.isSold) return;
+        if (!isHost || auctionState.isSold || isPaused) return;
 
         if (auctionState.timer <= 0) {
             const finalBuyer = auctionState.currentBidTeam || 'UNSOLD';
@@ -219,7 +226,7 @@ export default function Auction({ userData, onEnd }) {
         }, 1000);
 
         return () => clearInterval(interval);
-    }, [isHost, auctionState.isSold, auctionState.timer, userData.roomId, auctionState, roomUsers]);
+    }, [isHost, auctionState.isSold, auctionState.timer, userData.roomId, auctionState, roomUsers, isPaused]);
 
     // Play hammer sound effect when player is sold
     useEffect(() => {
@@ -244,8 +251,8 @@ export default function Auction({ userData, onEnd }) {
     // Check if the current user represents a team, and if that team is currently leading the bid
     const isMyTeamLeading = Boolean(userData.team && auctionState.currentBidTeam === userData.team);
 
-    // The user can only bid if they are a team, they aren't currently leading, and they have enough purse
-    const canBid = Boolean(userData.team && !isMyTeamLeading && nextBidAmount <= myPurse);
+    // The user can only bid if they are a team, they aren't currently leading, they have enough purse, and the game isn't paused
+    const canBid = Boolean(userData.team && !isMyTeamLeading && nextBidAmount <= myPurse && !isPaused);
 
     const handlePlaceBid = () => {
         if (!canBid || isSold) return;
@@ -331,8 +338,10 @@ export default function Auction({ userData, onEnd }) {
 
                     <div className="flex items-center w-full px-4 pb-4" style={{ gap: '0.5rem', background: '#121212', paddingTop: '1rem', marginTop: '-1rem', zIndex: 100, position: 'relative' }}>
                         <div className={`timer-box ${auctionState.timer <= 3 ? 'danger' : 'warning'}`}>
-                            <span className="timer-num">{auctionState.timer}</span>
-                            <span className="timer-text">SEC</span>
+                            <span className="timer-num" style={{ color: isPaused ? '#a855f7' : '' }}>
+                                {isPaused ? '⏸' : auctionState.timer}
+                            </span>
+                            <span className="timer-text">{isPaused ? 'PAUSED' : 'SEC'}</span>
                         </div>
                         <div className="flex-col" style={{ marginLeft: 'auto', marginRight: '1rem', alignItems: 'flex-end', flex: 1 }}>
                             {isSold ? (
@@ -350,12 +359,12 @@ export default function Auction({ userData, onEnd }) {
                                     padding: '0.5rem 2rem',
                                     opacity: canBid ? 1 : 0.5,
                                     cursor: canBid ? 'pointer' : 'not-allowed',
-                                    background: isMyTeamLeading ? '#4b5563' : '' // Grey out if leading
+                                    background: isMyTeamLeading ? '#4b5563' : isPaused ? '#374151' : '' // Grey out if leading or paused
                                 }}
                                 onClick={handlePlaceBid}
                                 disabled={!canBid}
                             >
-                                {isMyTeamLeading ? 'LEADING BID' : `BID ₹ ${nextBidAmount.toFixed(2)}Cr`}
+                                {isPaused ? 'PAUSED' : isMyTeamLeading ? 'LEADING BID' : `BID ₹ ${nextBidAmount.toFixed(2)}Cr`}
                             </button>
                         )}
                     </div>
