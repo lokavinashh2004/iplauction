@@ -131,7 +131,7 @@ function App() {
           <div className="room-title">
             Room: <span className="room-code">{userData.roomId}</span>
           </div>
-          <div className="flex items-center" style={{ gap: '1rem' }}>
+          <div className="flex items-center" style={{ gap: '1rem', flexWrap: 'wrap', justifyContent: 'center' }}>
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#10b981" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12.55a11 11 0 0 1 14.08 0"></path><path d="M1.42 9a16 16 0 0 1 21.16 0"></path><path d="M8.53 16.11a6 6 0 0 1 6.95 0"></path><line x1="12" y1="20" x2="12.01" y2="20"></line></svg>
             {isHost && (
               <button
@@ -149,7 +149,7 @@ function App() {
       {currentPage === 'auction' && (
         <header className="auction-topbar">
           <div className="topbar-content">
-            <div className="flex items-center" style={{ gap: '0.75rem' }}>
+            <div className="flex items-center" style={{ gap: '0.75rem', flexWrap: 'wrap', justifyContent: 'center' }}>
               <span style={{ color: 'var(--text-tertiary)', fontSize: '0.875rem' }}>Room: <span className="room-code" style={{ marginLeft: 0 }}>{userData.roomId}</span></span>
               <div style={{ background: 'rgba(255,255,255,0.05)', padding: '0.2rem 0.5rem', borderRadius: '4px', fontSize: '0.75rem', display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
                 <div className="online-dot" style={{ width: '6px', height: '6px' }}></div>
@@ -158,7 +158,7 @@ function App() {
               <button className="icon-btn outline" style={{ padding: '0.25rem 0.5rem', height: 'auto' }}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg></button>
             </div>
 
-            <div className="flex items-center" style={{ gap: '0.75rem' }}>
+            <div className="flex items-center" style={{ gap: '0.75rem', flexWrap: 'wrap', justifyContent: 'center' }}>
               {isHost && (
                 <>
                   <button className="btn-outline-yellow"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="6" y="4" width="4" height="16"></rect><rect x="14" y="4" width="4" height="16"></rect></svg> Pause</button>
