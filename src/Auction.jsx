@@ -43,6 +43,26 @@ const IPL_LOGOS = {
     LSG: 'https://upload.wikimedia.org/wikipedia/en/thumb/a/a9/Lucknow_Super_Giants_IPL_Logo.svg/200px-Lucknow_Super_Giants_IPL_Logo.svg.png'
 };
 
+const AnimatedPurse = ({ amount }) => {
+    const [prevAmount, setPrevAmount] = useState(amount);
+    const [animating, setAnimating] = useState(false);
+
+    useEffect(() => {
+        if (amount !== prevAmount) {
+            setAnimating(true);
+            setPrevAmount(amount);
+            const t = setTimeout(() => setAnimating(false), 800);
+            return () => clearTimeout(t);
+        }
+    }, [amount, prevAmount]);
+
+    return (
+        <span className={animating ? 'purse-deduct-animate' : ''} style={{ display: 'inline-block', transition: 'color 0.3s' }}>
+            ₹ {amount.toFixed(2)} Cr
+        </span>
+    );
+};
+
 export default function Auction({ userData, onEnd }) {
     const [activeTab, setActiveTab] = useState('board');
 
@@ -279,6 +299,11 @@ export default function Auction({ userData, onEnd }) {
             currentBidTeam: userData.team,
             timer: roomTimerSetting // Reset the auction countdown so teams can respond
         });
+    };
+
+    const getTeamPurse = (teamName) => {
+        const teamUser = Object.keys(roomUsers).find(name => roomUsers[name].team === teamName);
+        return teamUser && roomUsers[teamUser].purse !== undefined ? roomUsers[teamUser].purse : 100.00;
     };
 
     // Auto-switch to board tab when player is sold so the sliding animation resolves visibly
@@ -533,7 +558,13 @@ export default function Auction({ userData, onEnd }) {
                                 {/* My Squad Column */}
                                 <div style={{ flex: 1, display: 'flex', flexDirection: 'column', background: 'rgba(0,0,0,0.3)', borderRadius: '8px', overflow: 'hidden' }}>
                                     <div style={{ background: '#111', padding: '0.5rem', textAlign: 'center', fontWeight: 800, fontSize: '0.85rem', letterSpacing: '1px', borderBottom: '2px solid #333' }}>
-                                        MY SQUAD
+                                        <div style={{ marginBottom: '0.2rem' }}>MY SQUAD</div>
+                                        {userData.team && (
+                                            <div style={{ fontSize: '0.7rem', display: 'flex', justifyContent: 'center', gap: '4px' }}>
+                                                <span style={{ color: '#aaa', fontWeight: 600 }}>PURSE:</span>
+                                                <span style={{ color: '#10b981', fontWeight: 800 }}><AnimatedPurse amount={myPurse} /></span>
+                                            </div>
+                                        )}
                                     </div>
                                     <Droppable droppableId={userData.team || 'unassigned_my_squad'}>
                                         {(provided) => (
@@ -598,6 +629,9 @@ export default function Auction({ userData, onEnd }) {
                                                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', marginBottom: '0.4rem', borderBottom: `1px solid ${TEAM_COLORS[teamName] || '#555'}`, paddingBottom: '0.2rem' }}>
                                                         <img src={IPL_LOGOS[teamName]} style={{ width: '14px', height: '14px' }} alt="" />
                                                         <span style={{ fontSize: '0.75rem', fontWeight: 800, color: TEAM_COLORS[teamName] || '#fff' }}>{teamName}</span>
+                                                        <div style={{ marginLeft: 'auto', fontSize: '0.7rem', fontWeight: 800, color: '#10b981' }}>
+                                                            <AnimatedPurse amount={getTeamPurse(teamName)} />
+                                                        </div>
                                                     </div>
                                                     <Droppable droppableId={teamName}>
                                                         {(provided) => (
