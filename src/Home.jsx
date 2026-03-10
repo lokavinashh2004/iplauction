@@ -130,18 +130,6 @@ export default function Home({ userData, setUserData, onJoin }) {
                     </span>
                     <span className="banner-tag bg-orange">NEW</span>
                 </div>
-                <div className="banner-item purple">
-                    <span className="flex items-center" style={{ gap: '0.5rem' }}>
-                        <span style={{ color: '#a855f7' }}>🚀</span> Play IPL Simulation Game!
-                    </span>
-                    <span className="banner-tag bg-neutral">LIVE</span>
-                </div>
-                <div className="banner-item green">
-                    <span className="flex items-center" style={{ gap: '0.5rem' }}>
-                        <span style={{ color: '#10b981' }}>☕</span> Enjoyed it? Buy us a coffee!
-                    </span>
-                    <span className="banner-tag bg-green">Support</span>
-                </div>
             </div>
 
             <div className="interactive-card animate-fade-in" style={{ animationDelay: '0.1s' }}>
