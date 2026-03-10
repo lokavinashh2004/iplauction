@@ -175,7 +175,7 @@ export default function Auction({ userData, onEnd }) {
 
     // Host exclusively drives the game clock to prevent client drift
     useEffect(() => {
-        if (!isHost || auctionState.isSold || isPaused) return;
+        if (!isHost || auctionState.isSold || isPaused || auctionState.isAuctionOver) return;
 
         if (auctionState.timer <= 0) {
             const finalBuyer = auctionState.currentBidTeam || 'UNSOLD';
@@ -234,21 +234,28 @@ export default function Auction({ userData, onEnd }) {
 
             // After a 3 second delay, load the next player
             setTimeout(() => {
-                const nextIndex = (auctionState.currentPlayerIndex + 1) % PLAYERS_DATA.length;
-                const nextPlayer = PLAYERS_DATA[nextIndex];
-
-                get(ref(db, `rooms/${userData.roomId}/settings/timer`)).then(snap => {
-                    const currentTimerVal = snap.val() || 15;
+                const nextIndex = auctionState.currentPlayerIndex + 1;
+                if (nextIndex >= PLAYERS_DATA.length) {
                     set(ref(db, `rooms/${userData.roomId}/auctionState`), {
-                        activePlayer: nextPlayer,
-                        currentPlayerIndex: nextIndex,
-                        currentBid: parseFloat(nextPlayer.basePrice),
-                        currentBidTeam: null,
-                        timer: currentTimerVal,
-                        isSold: false,
-                        soldTo: null
+                        ...auctionState,
+                        isAuctionOver: true,
+                        timer: 0
                     });
-                });
+                } else {
+                    const nextPlayer = PLAYERS_DATA[nextIndex];
+                    get(ref(db, `rooms/${userData.roomId}/settings/timer`)).then(snap => {
+                        const currentTimerVal = snap.val() || 15;
+                        set(ref(db, `rooms/${userData.roomId}/auctionState`), {
+                            activePlayer: nextPlayer,
+                            currentPlayerIndex: nextIndex,
+                            currentBid: parseFloat(nextPlayer.basePrice),
+                            currentBidTeam: null,
+                            timer: currentTimerVal,
+                            isSold: false,
+                            soldTo: null
+                        });
+                    });
+                }
             }, 3000);
 
             return;
@@ -287,8 +294,11 @@ export default function Auction({ userData, onEnd }) {
     // Check if the current user represents a team, and if that team is currently leading the bid
     const isMyTeamLeading = Boolean(userData.team && auctionState.currentBidTeam === userData.team);
 
-    // The user can only bid if they are a team, they aren't currently leading, they have enough purse, and the game isn't paused
-    const canBid = Boolean(userData.team && !isMyTeamLeading && nextBidAmount <= myPurse && !isPaused);
+    const mySquadSize = userData.team && allSquads[userData.team] ? allSquads[userData.team].length : 0;
+    const isSquadFull = mySquadSize >= 25;
+
+    // The user can only bid if they are a team, they aren't currently leading, they have enough purse, the game isn't paused, and the squad isn't full
+    const canBid = Boolean(userData.team && !isMyTeamLeading && nextBidAmount <= myPurse && !isPaused && !isSquadFull);
 
     const handlePlaceBid = () => {
         if (!canBid || isSold) return;
@@ -312,6 +322,45 @@ export default function Auction({ userData, onEnd }) {
             setActiveTab('board');
         }
     }, [auctionState.isSold, buyingTeam]);
+
+    if (auctionState.isAuctionOver) {
+        return (
+            <div className="center-panel" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
+                <div className="auction-card animate-fade-in" style={{ width: '100%', maxWidth: '800px', padding: '2rem', textAlign: 'center', overflowY: 'auto', maxHeight: '80vh' }}>
+                    <h2 style={{ fontSize: '2.5rem', fontWeight: 900, marginBottom: '0.5rem', color: '#fff', letterSpacing: '2px' }}>AUCTION COMPLETED</h2>
+                    <p style={{ color: 'var(--text-tertiary)', marginBottom: '2rem' }}>Final Squad Status</p>
+
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem', textAlign: 'left' }}>
+                        {Object.keys(TEAM_COLORS).map(teamName => {
+                            const squadLen = allSquads[teamName] ? allSquads[teamName].length : 0;
+                            const isComplete = squadLen >= 18;
+                            return (
+                                <div key={teamName} style={{ background: 'rgba(0,0,0,0.5)', padding: '1rem', borderRadius: '8px', borderLeft: `6px solid ${TEAM_COLORS[teamName]}` }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
+                                        <div style={{ width: '24px', height: '24px' }}>
+                                            <img src={IPL_LOGOS[teamName]} alt="" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+                                        </div>
+                                        <div style={{ fontWeight: 900, color: TEAM_COLORS[teamName], fontSize: '1.2rem' }}>{teamName}</div>
+                                    </div>
+                                    <div style={{ fontSize: '0.9rem', color: '#ccc', marginBottom: '0.25rem' }}>Players: <span style={{ color: '#fff', fontWeight: 'bold' }}>{squadLen}/25</span></div>
+                                    <div style={{ fontSize: '0.85rem', fontWeight: 800, color: isComplete ? '#10b981' : '#ef4444' }}>
+                                        {isComplete ? '✓ COMPLETE SQUAD' : '⚠ INCOMPLETE SQUAD'}
+                                    </div>
+                                    {!isComplete && <div style={{ fontSize: '0.7rem', color: '#ef4444', marginTop: '0.2rem' }}>(Requires Min 18)</div>}
+                                </div>
+                            );
+                        })}
+                    </div>
+
+                    {isHost && (
+                        <button className="btn-solid-orange" style={{ marginTop: '2.5rem', padding: '0.75rem 2rem', fontSize: '1.1rem' }} onClick={onEnd}>
+                            Close Room
+                        </button>
+                    )}
+                </div>
+            </div>
+        );
+    }
 
     return (
         <div className="center-panel">
@@ -468,12 +517,12 @@ export default function Auction({ userData, onEnd }) {
                                     padding: '0.5rem 2rem',
                                     opacity: canBid ? 1 : 0.5,
                                     cursor: canBid ? 'pointer' : 'not-allowed',
-                                    background: isMyTeamLeading ? '#4b5563' : isPaused ? '#374151' : '' // Grey out if leading or paused
+                                    background: isSquadFull ? '#991b1b' : isMyTeamLeading ? '#4b5563' : isPaused ? '#374151' : ''
                                 }}
                                 onClick={handlePlaceBid}
                                 disabled={!canBid}
                             >
-                                {isPaused ? 'PAUSED' : isMyTeamLeading ? 'LEADING BID' : `BID ₹ ${nextBidAmount.toFixed(2)}Cr`}
+                                {isSquadFull ? 'SQUAD FULL (25/25)' : isPaused ? 'PAUSED' : isMyTeamLeading ? 'LEADING BID' : `BID ₹ ${nextBidAmount.toFixed(2)}Cr`}
                             </button>
                         )}
                     </div>
@@ -560,9 +609,13 @@ export default function Auction({ userData, onEnd }) {
                                     <div style={{ background: '#111', padding: '0.5rem', textAlign: 'center', fontWeight: 800, fontSize: '0.85rem', letterSpacing: '1px', borderBottom: '2px solid #333' }}>
                                         <div style={{ marginBottom: '0.2rem' }}>MY SQUAD</div>
                                         {userData.team && (
-                                            <div style={{ fontSize: '0.7rem', display: 'flex', justifyContent: 'center', gap: '4px' }}>
-                                                <span style={{ color: '#aaa', fontWeight: 600 }}>PURSE:</span>
-                                                <span style={{ color: '#10b981', fontWeight: 800 }}><AnimatedPurse amount={myPurse} /></span>
+                                            <div style={{ fontSize: '0.7rem', display: 'flex', justifyContent: 'center', gap: '8px', alignItems: 'center' }}>
+                                                <span>
+                                                    <span style={{ color: '#aaa', fontWeight: 600 }}>PURSE: </span>
+                                                    <span style={{ color: '#10b981', fontWeight: 800 }}><AnimatedPurse amount={myPurse} /></span>
+                                                </span>
+                                                <span style={{ color: '#555' }}>|</span>
+                                                <span style={{ color: mySquadSize >= 25 ? '#ef4444' : '#aaa', fontWeight: 600 }}>({mySquadSize}/25)</span>
                                             </div>
                                         )}
                                     </div>
@@ -629,6 +682,7 @@ export default function Auction({ userData, onEnd }) {
                                                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', marginBottom: '0.4rem', borderBottom: `1px solid ${TEAM_COLORS[teamName] || '#555'}`, paddingBottom: '0.2rem' }}>
                                                         <img src={IPL_LOGOS[teamName]} style={{ width: '14px', height: '14px' }} alt="" />
                                                         <span style={{ fontSize: '0.75rem', fontWeight: 800, color: TEAM_COLORS[teamName] || '#fff' }}>{teamName}</span>
+                                                        <span style={{ marginLeft: '0.5rem', fontSize: '0.65rem', color: squad.length >= 25 ? '#ef4444' : '#888', fontWeight: 600 }}>({squad.length}/25)</span>
                                                         <div style={{ marginLeft: 'auto', fontSize: '0.7rem', fontWeight: 800, color: '#10b981' }}>
                                                             <AnimatedPurse amount={getTeamPurse(teamName)} />
                                                         </div>
