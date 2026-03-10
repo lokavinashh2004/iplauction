@@ -392,40 +392,138 @@ export default function Auction({ userData, onEnd }) {
     }, [auctionState.isSold, buyingTeam]);
 
     if (auctionState.isAuctionOver) {
+        const teamsWithSquads = Object.keys(TEAM_COLORS).filter(t =>
+            Object.values(roomUsers).some(u => u.team === t)
+        );
+        const allTeams = Object.keys(TEAM_COLORS);
+
         return (
-            <div className="center-panel" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
-                <div className="auction-card animate-fade-in" style={{ width: '100%', maxWidth: '800px', padding: '2rem', textAlign: 'center', overflowY: 'auto', maxHeight: '80vh' }}>
-                    <h2 style={{ fontSize: '2.5rem', fontWeight: 900, marginBottom: '0.5rem', color: '#fff', letterSpacing: '2px' }}>AUCTION COMPLETED</h2>
-                    <p style={{ color: 'var(--text-tertiary)', marginBottom: '2rem' }}>Final Squad Status</p>
-
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem', textAlign: 'left' }}>
-                        {Object.keys(TEAM_COLORS).map(teamName => {
-                            const squadLen = allSquads[teamName] ? allSquads[teamName].length : 0;
-                            const isComplete = squadLen >= 18;
-                            return (
-                                <div key={teamName} style={{ background: 'rgba(0,0,0,0.5)', padding: '1rem', borderRadius: '8px', borderLeft: `6px solid ${TEAM_COLORS[teamName]}` }}>
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
-                                        <div style={{ width: '24px', height: '24px' }}>
-                                            <img src={IPL_LOGOS[teamName]} alt="" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
-                                        </div>
-                                        <div style={{ fontWeight: 900, color: TEAM_COLORS[teamName], fontSize: '1.2rem' }}>{teamName}</div>
-                                    </div>
-                                    <div style={{ fontSize: '0.9rem', color: '#ccc', marginBottom: '0.25rem' }}>Players: <span style={{ color: '#fff', fontWeight: 'bold' }}>{squadLen}/25</span></div>
-                                    <div style={{ fontSize: '0.9rem', color: '#ccc', marginBottom: '0.25rem' }}>Overseas: <span style={{ color: '#fff', fontWeight: 'bold' }}>{allSquads[teamName] ? allSquads[teamName].filter(p => p.country && p.country !== 'IND').length : 0}/8</span></div>
-                                    <div style={{ fontSize: '0.85rem', fontWeight: 800, color: isComplete ? '#10b981' : '#ef4444' }}>
-                                        {isComplete ? '✓ COMPLETE SQUAD' : '⚠ INCOMPLETE SQUAD'}
-                                    </div>
-                                    {!isComplete && <div style={{ fontSize: '0.7rem', color: '#ef4444', marginTop: '0.2rem' }}>(Requires Min 18)</div>}
-                                </div>
-                            );
-                        })}
+            <div style={{ width: '100%', minHeight: '100vh', background: 'linear-gradient(180deg, #0a0a0f 0%, #0d1117 100%)', paddingBottom: '3rem' }}>
+                {/* Header */}
+                <div style={{ background: 'linear-gradient(135deg, #1a1a2e 0%, #16213e 100%)', borderBottom: '1px solid rgba(212,175,55,0.3)', padding: '2rem 1rem', textAlign: 'center', position: 'relative' }}>
+                    <div style={{ fontSize: '0.75rem', letterSpacing: '3px', color: '#D4AF37', fontWeight: 700, marginBottom: '0.5rem', textTransform: 'uppercase' }}>
+                        🏏 IPL 2026 Auction
                     </div>
-
+                    <h1 style={{ fontSize: 'clamp(1.8rem, 5vw, 3rem)', fontWeight: 900, color: '#fff', letterSpacing: '3px', marginBottom: '0.5rem', textTransform: 'uppercase' }}>
+                        Final Squads
+                    </h1>
+                    <p style={{ color: 'rgba(255,255,255,0.5)', fontSize: '0.9rem' }}>
+                        All {allTeams.length} teams • {Object.values(allSquads).reduce((s, sq) => s + (sq?.length || 0), 0)} players purchased
+                    </p>
                     {isHost && (
-                        <button className="btn-solid-orange" style={{ marginTop: '2.5rem', padding: '0.75rem 2rem', fontSize: '1.1rem' }} onClick={onEnd}>
-                            Close Room
+                        <button
+                            className="btn-solid-orange"
+                            style={{ marginTop: '1.5rem', padding: '0.7rem 2rem', fontSize: '1rem' }}
+                            onClick={onEnd}
+                        >
+                            🚪 Close Room
                         </button>
                     )}
+                </div>
+
+                {/* Team Cards Grid */}
+                <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '1.5rem 1rem', display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '1rem' }}>
+                    {allTeams.map(teamName => {
+                        const squad = allSquads[teamName] || [];
+                        const overseas = squad.filter(p => p.country && p.country !== 'IND');
+                        const totalSpent = squad.reduce((s, p) => s + (p.boughtFor || 0), 0);
+                        const teamUser = Object.values(roomUsers).find(u => u.team === teamName);
+                        const purseLeft = teamUser ? (teamUser.purse !== undefined ? teamUser.purse : 100 - totalSpent) : (100 - totalSpent);
+                        const isComplete = squad.length >= 18;
+                        const tc = TEAM_COLORS[teamName];
+
+                        return (
+                            <div
+                                key={teamName}
+                                style={{
+                                    background: 'rgba(255,255,255,0.03)',
+                                    border: `1px solid ${tc}40`,
+                                    borderTop: `3px solid ${tc}`,
+                                    borderRadius: '10px',
+                                    overflow: 'hidden',
+                                    boxShadow: `0 4px 24px ${tc}22`
+                                }}
+                            >
+                                {/* Team Header */}
+                                <div style={{ background: `linear-gradient(135deg, ${tc}22, ${tc}08)`, padding: '0.875rem 1rem', display: 'flex', alignItems: 'center', gap: '0.75rem', borderBottom: `1px solid ${tc}30` }}>
+                                    <div style={{ width: '42px', height: '42px', background: '#fff', borderRadius: '50%', padding: '3px', flexShrink: 0, boxShadow: `0 0 10px ${tc}60` }}>
+                                        <img src={IPL_LOGOS[teamName]} alt={teamName} style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+                                    </div>
+                                    <div style={{ flex: 1, minWidth: 0 }}>
+                                        <div style={{ fontWeight: 900, color: tc, fontSize: '1rem', letterSpacing: '1px' }}>{teamName}</div>
+                                        <div style={{ fontSize: '0.7rem', color: 'rgba(255,255,255,0.5)', marginTop: '1px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{TEAM_FULL_NAMES[teamName]}</div>
+                                    </div>
+                                    <div style={{ textAlign: 'right', flexShrink: 0 }}>
+                                        <div style={{ fontSize: '0.65rem', color: 'rgba(255,255,255,0.45)', letterSpacing: '0.5px' }}>PURSE LEFT</div>
+                                        <div style={{ fontSize: '0.9rem', fontWeight: 800, color: purseLeft >= 0 ? '#10b981' : '#ef4444' }}>₹{Math.max(0, purseLeft).toFixed(1)}Cr</div>
+                                    </div>
+                                </div>
+
+                                {/* Squad Stats Bar */}
+                                <div style={{ display: 'flex', justifyContent: 'space-between', padding: '0.5rem 1rem', background: 'rgba(0,0,0,0.3)', fontSize: '0.72rem', color: 'rgba(255,255,255,0.55)', borderBottom: `1px solid rgba(255,255,255,0.06)` }}>
+                                    <span>
+                                        <span style={{ color: isComplete ? '#10b981' : '#f59e0b', fontWeight: 700 }}>{squad.length}</span>
+                                        <span>/25 Players</span>
+                                    </span>
+                                    <span>
+                                        <span style={{ color: overseas.length >= 8 ? '#ef4444' : '#fff', fontWeight: 700 }}>{overseas.length}</span>
+                                        <span>/8 Overseas</span>
+                                    </span>
+                                    <span style={{ color: isComplete ? '#10b981' : '#ef4444', fontWeight: 700 }}>
+                                        {isComplete ? '✓ Complete' : '⚠ Incomplete'}
+                                    </span>
+                                </div>
+
+                                {/* Player List */}
+                                <div style={{ maxHeight: '280px', overflowY: 'auto', padding: '0.5rem' }}>
+                                    {squad.length === 0 ? (
+                                        <div style={{ textAlign: 'center', color: 'rgba(255,255,255,0.25)', padding: '1.5rem', fontSize: '0.8rem' }}>
+                                            No players purchased
+                                        </div>
+                                    ) : (
+                                        squad.map((player, idx) => {
+                                            const isOverseas = player.country && player.country !== 'IND';
+                                            return (
+                                                <div
+                                                    key={player.id || idx}
+                                                    style={{
+                                                        display: 'flex',
+                                                        alignItems: 'center',
+                                                        gap: '0.5rem',
+                                                        padding: '0.35rem 0.5rem',
+                                                        borderRadius: '5px',
+                                                        marginBottom: '0.2rem',
+                                                        background: idx % 2 === 0 ? 'rgba(255,255,255,0.02)' : 'transparent',
+                                                        borderLeft: `2px solid ${isOverseas ? '#e11d48' : tc}40`
+                                                    }}
+                                                >
+                                                    <span style={{ fontSize: '0.6rem', color: 'rgba(255,255,255,0.25)', width: '18px', flexShrink: 0 }}>{String(idx + 1).padStart(2, '0')}</span>
+                                                    <span style={{ flex: 1, fontSize: '0.78rem', fontWeight: 700, color: '#fff', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                                        {player.name}
+                                                        {isOverseas && (
+                                                            <span title="Overseas" style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', background: '#e11d48', borderRadius: '50%', width: '12px', height: '12px', marginLeft: '4px', flexShrink: 0, verticalAlign: 'middle' }}>
+                                                                <svg fill="white" viewBox="0 0 24 24" width="8" height="8"><path d="M21 16v-2l-8-5V3.5c0-.83-.67-1.5-1.5-1.5S10 2.67 10 3.5V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L13 19v-5.5l8 2.5z" /></svg>
+                                                            </span>
+                                                        )}
+                                                    </span>
+                                                    <span style={{ fontSize: '0.65rem', color: 'rgba(255,255,255,0.4)', flexShrink: 0 }}>{player.role?.slice(0, 3)}</span>
+                                                    <span style={{ fontSize: '0.72rem', fontWeight: 800, color: '#D4AF37', flexShrink: 0 }}>₹{(player.boughtFor || 0).toFixed(1)}Cr</span>
+                                                </div>
+                                            );
+                                        })
+                                    )}
+                                </div>
+
+                                {/* Spend footer */}
+                                {squad.length > 0 && (
+                                    <div style={{ padding: '0.5rem 1rem', borderTop: `1px solid ${tc}20`, display: 'flex', justifyContent: 'space-between', fontSize: '0.7rem', background: 'rgba(0,0,0,0.2)', color: 'rgba(255,255,255,0.4)' }}>
+                                        <span>Total Spent</span>
+                                        <span style={{ color: tc, fontWeight: 800 }}>₹{totalSpent.toFixed(2)} Cr</span>
+                                    </div>
+                                )}
+                            </div>
+                        );
+                    })}
                 </div>
             </div>
         );
