@@ -8,9 +8,9 @@ export const PLAYERS_DATA = [
         "age": 34,
         "previousTeam": "RR",
         "basePrice": "2.00",
-        "imageUrl": "https://bcciplayerimages.s3.ap-south-1.amazonaws.com/ipl/IPLHeadshot2024/509.png",
         "iplStat": "3582 Runs",
-        "set": "M1"
+        "set": "M1",
+        "imageUrl": "https://upload.wikimedia.org/wikipedia/commons/thumb/0/01/Jos_Buttler_in_2023.jpg/500px-Jos_Buttler_in_2023.jpg",
     },
     {
         "id": 2,
@@ -21,9 +21,9 @@ export const PLAYERS_DATA = [
         "age": 30,
         "previousTeam": "KKR",
         "basePrice": "2.00",
-        "imageUrl": "https://bcciplayerimages.s3.ap-south-1.amazonaws.com/ipl/IPLHeadshot2024/1563.png",
         "iplStat": "3127 Runs",
-        "set": "M1"
+        "set": "M1",
+        "imageUrl": "https://upload.wikimedia.org/wikipedia/commons/a/ae/Shreyas_Iyer_snapped_at_the_airport_%28Cropped%29.jpg",
     },
     {
         "id": 3,
@@ -34,9 +34,9 @@ export const PLAYERS_DATA = [
         "age": 27,
         "previousTeam": "DC",
         "basePrice": "2.00",
-        "imageUrl": "https://bcciplayerimages.s3.ap-south-1.amazonaws.com/ipl/IPLHeadshot2024/2972.png",
         "iplStat": "3284 Runs",
-        "set": "M1"
+        "set": "M1",
+        "imageUrl": "https://upload.wikimedia.org/wikipedia/commons/thumb/7/77/Rishabh_Pant.jpg/500px-Rishabh_Pant.jpg",
     },
     {
         "id": 4,
@@ -47,9 +47,9 @@ export const PLAYERS_DATA = [
         "age": 29,
         "previousTeam": "PBKS",
         "basePrice": "2.00",
-        "imageUrl": "https://bcciplayerimages.s3.ap-south-1.amazonaws.com/ipl/IPLHeadshot2024/116.png",
         "iplStat": "117 Wickets",
-        "set": "M1"
+        "set": "M1",
+        "imageUrl": "https://upload.wikimedia.org/wikipedia/commons/thumb/0/08/Rabada.jpg/500px-Rabada.jpg",
     },
     {
         "id": 5,
@@ -60,9 +60,9 @@ export const PLAYERS_DATA = [
         "age": 26,
         "previousTeam": "PBKS",
         "basePrice": "2.00",
-        "imageUrl": "https://bcciplayerimages.s3.ap-south-1.amazonaws.com/ipl/IPLHeadshot2024/4698.png",
         "iplStat": "76 Wickets",
-        "set": "M1"
+        "set": "M1",
+        "imageUrl": "https://upload.wikimedia.org/wikipedia/commons/thumb/3/36/Prime_Minister_Of_Bharat_Shri_Narendra_Damodardas_Modi_with_Arshdeep_Singh_Family_%28Cropped%29.jpg/500px-Prime_Minister_Of_Bharat_Shri_Narendra_Damodardas_Modi_with_Arshdeep_Singh_Family_%28Cropped%29.jpg",
     },
     {
         "id": 6,
@@ -73,9 +73,9 @@ export const PLAYERS_DATA = [
         "age": 35,
         "previousTeam": "KKR",
         "basePrice": "2.00",
-        "imageUrl": "https://bcciplayerimages.s3.ap-south-1.amazonaws.com/ipl/IPLHeadshot2024/114.png",
         "iplStat": "51 Wickets",
-        "set": "M1"
+        "set": "M1",
+        "imageUrl": "https://upload.wikimedia.org/wikipedia/commons/3/38/Mitchell_Starc_2023.jpg",
     },
     {
         "id": 7,
@@ -86,9 +86,9 @@ export const PLAYERS_DATA = [
         "age": 34,
         "previousTeam": "RR",
         "basePrice": "2.00",
-        "imageUrl": "https://bcciplayerimages.s3.ap-south-1.amazonaws.com/ipl/IPLHeadshot2024/111.png",
         "iplStat": "200 Wickets",
-        "set": "M2"
+        "set": "M2",
+        "imageUrl": "https://upload.wikimedia.org/wikipedia/commons/thumb/d/df/Yuzvendra_Chahal_in_PMO_New_Delhi.jpg/500px-Yuzvendra_Chahal_in_PMO_New_Delhi.jpg",
     },
     {
         "id": 8,
@@ -99,9 +99,9 @@ export const PLAYERS_DATA = [
         "age": 31,
         "previousTeam": "PBKS",
         "basePrice": "2.00",
-        "imageUrl": "https://bcciplayerimages.s3.ap-south-1.amazonaws.com/ipl/IPLHeadshot2024/3644.png",
         "iplStat": "939 Runs",
-        "set": "M2"
+        "set": "M2",
+        "imageUrl": "https://ui-avatars.com/api/?name=Liam%20Livingstone&background=random&size=500",
     },
     {
         "id": 9,
@@ -112,9 +112,9 @@ export const PLAYERS_DATA = [
         "age": 35,
         "previousTeam": "GT",
         "basePrice": "1.50",
-        "imageUrl": "https://bcciplayerimages.s3.ap-south-1.amazonaws.com/ipl/IPLHeadshot2024/187.png",
         "iplStat": "2714 Runs",
-        "set": "M2"
+        "set": "M2",
+        "imageUrl": "https://ui-avatars.com/api/?name=David%20Miller&background=random&size=500",
     },
     {
         "id": 10,
@@ -125,8 +125,8 @@ export const PLAYERS_DATA = [
         "age": 32,
         "previousTeam": "LSG",
         "basePrice": "2.00",
-        "imageUrl": "https://bcciplayerimages.s3.ap-south-1.amazonaws.com/ipl/IPLHeadshot2024/1125.png",
         "iplStat": "4163 Runs",
-        "set": "M2"
+        "set": "M2",
+        "imageUrl": "https://upload.wikimedia.org/wikipedia/commons/6/69/KL_Rahul_at_Femina_Miss_India_2018_Grand_Finale_%28cropped%29.jpg",
     }
 ];
