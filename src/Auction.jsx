@@ -320,12 +320,40 @@ export default function Auction({ userData, onEnd }) {
                                 <div className="bid-label">CURRENT BID</div>
                                 <div className="bid-value">₹ {(auctionState.currentBid || 0).toFixed(2)}Cr</div>
                                 {auctionState.currentBidTeam && (
-                                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', marginTop: '6px' }}>
-                                        <div style={{ width: '28px', height: '28px', background: '#fff', borderRadius: '50%', padding: '4px', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 0 6px rgba(0,0,0,0.4)', flexShrink: 0 }}>
-                                            <img src={IPL_LOGOS[auctionState.currentBidTeam]} alt={auctionState.currentBidTeam} style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
-                                        </div>
-                                        <div style={{ fontSize: '1.2rem', color: isSold ? '#fff' : TEAM_COLORS[auctionState.currentBidTeam], fontWeight: 900, textShadow: isSold ? 'none' : '0px 1px 3px rgba(0,0,0,0.6)', letterSpacing: '0.5px' }}>
-                                            {auctionState.currentBidTeam} leads
+                                    <div style={{ display: 'flex', justifyContent: 'center', marginTop: '10px' }}>
+                                        <div style={{
+                                            display: 'inline-flex',
+                                            alignItems: 'center',
+                                            background: 'linear-gradient(180deg, #FFE600 0%, #FFB800 100%)',
+                                            borderRadius: '999px',
+                                            padding: '3px 16px 3px 3px',
+                                            boxShadow: '0 0 12px rgba(255, 215, 0, 0.6), inset 0 2px 4px rgba(255, 255, 255, 0.6), inset 0 -2px 4px rgba(200, 100, 0, 0.4)',
+                                            border: '1px solid #FFF59D'
+                                        }}>
+                                            <div style={{
+                                                width: '32px',
+                                                height: '32px',
+                                                background: '#fff',
+                                                borderRadius: '50%',
+                                                padding: '4px',
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                justifyContent: 'center',
+                                                boxShadow: '0 2px 6px rgba(0,0,0,0.3)',
+                                                flexShrink: 0
+                                            }}>
+                                                <img src={IPL_LOGOS[auctionState.currentBidTeam]} alt={auctionState.currentBidTeam} style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+                                            </div>
+                                            <div style={{
+                                                fontSize: '1.05rem',
+                                                color: '#0A2342',
+                                                fontWeight: 900,
+                                                letterSpacing: '0.5px',
+                                                marginLeft: '8px',
+                                                textTransform: 'uppercase'
+                                            }}>
+                                                {auctionState.currentBidTeam} LEADING
+                                            </div>
                                         </div>
                                     </div>
                                 )}
