@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { db } from './firebase';
 import { ref, onValue, set, get } from 'firebase/database';
 import { PLAYERS_DATA } from './Players/playersData';
+import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd';
 
 const TEAM_COLORS = {
     MI: '#004BA0',
@@ -43,7 +44,7 @@ const IPL_LOGOS = {
 };
 
 export default function Auction({ userData, onEnd }) {
-    const [activeTab, setActiveTab] = useState('activity');
+    const [activeTab, setActiveTab] = useState('board');
 
     // Synced State
     const [auctionState, setAuctionState] = useState({
@@ -62,6 +63,21 @@ export default function Auction({ userData, onEnd }) {
     const [allSquads, setAllSquads] = useState({});
     const [roomTimerSetting, setRoomTimerSetting] = useState(15);
     const [isPaused, setIsPaused] = useState(false);
+
+    const handleDragEnd = (result) => {
+        if (!result.destination) return;
+        const { source, destination } = result;
+        if (source.droppableId !== destination.droppableId) return;
+
+        const teamName = source.droppableId;
+        if (teamName.startsWith('unassigned')) return;
+
+        const squad = Array.from(allSquads[teamName] || []);
+        const [movedPlayer] = squad.splice(source.index, 1);
+        squad.splice(destination.index, 0, movedPlayer);
+
+        set(ref(db, `rooms/${userData.roomId}/squads/${teamName}`), squad);
+    };
 
     // Sync auction state from Firebase
     useEffect(() => {
@@ -426,13 +442,9 @@ export default function Auction({ userData, onEnd }) {
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>
                         Activity <span className="tab-badge">{activityLog.length}</span>
                     </button>
-                    <button className={`room-tab small ${activeTab === 'squad' ? 'active-neutral' : ''}`} onClick={() => setActiveTab('squad')}>
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="8" width="18" height="12" rx="2"></rect><path d="M16 8V6a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"></path></svg>
-                        My Squad <span className="tab-badge">{userData.team && allSquads[userData.team] ? allSquads[userData.team].length : 0}</span>
-                    </button>
-                    <button className={`room-tab small ${activeTab === 'others_squad' ? 'active-neutral' : ''}`} onClick={() => setActiveTab('others_squad')}>
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
-                        Others Squad
+                    <button className={`room-tab small ${activeTab === 'board' ? 'active-neutral full-bg' : ''}`} onClick={() => setActiveTab('board')}>
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><line x1="3" y1="9" x2="21" y2="9"></line><line x1="9" y1="21" x2="9" y2="9"></line></svg>
+                        Squad Board
                     </button>
                     <button className={`room-tab small ${activeTab === 'settings' ? 'active-purple' : ''}`} onClick={() => setActiveTab('settings')}>
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
@@ -482,93 +494,125 @@ export default function Auction({ userData, onEnd }) {
                         </div>
                     )}
 
-                    {activeTab === 'squad' && (
-                        <div className="squad-panel" style={{ padding: '0 0.5rem', maxHeight: '300px', overflowY: 'auto' }}>
-                            {(!userData.team || !allSquads[userData.team] || allSquads[userData.team].length === 0) ? (
-                                <div className="flex items-center justify-center h-full w-full" style={{ padding: '2rem 0' }}>
-                                    <span style={{ color: 'var(--text-tertiary)' }}>No players in your squad yet.</span>
-                                </div>
-                            ) : (
-                                <div className="flex-col" style={{ gap: '0.75rem', paddingTop: '0.5rem' }}>
-                                    {allSquads[userData.team].map(player => (
-                                        <div key={player.id} style={{
-                                            background: '#1a1a1a',
-                                            padding: '0.5rem',
-                                            borderRadius: '8px',
-                                            display: 'flex',
-                                            alignItems: 'center',
-                                            gap: '1rem',
-                                            borderLeft: `4px solid ${TEAM_COLORS[userData.team] || '#10b981'}`
-                                        }}>
-                                            <div style={{ width: '40px', height: '40px', borderRadius: '50%', background: '#333', overflow: 'hidden', flexShrink: 0 }}>
-                                                <img src={player.image} alt={player.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                                            </div>
-                                            <div className="flex-col-start" style={{ flex: 1 }}>
-                                                <span style={{ fontWeight: 600, color: '#fff', fontSize: '0.9rem' }}>{player.name}</span>
-                                                <span style={{ fontSize: '0.75rem', color: 'var(--text-tertiary)' }}>{player.role}</span>
-                                            </div>
-                                            <div style={{ textAlign: 'right', paddingRight: '0.5rem' }}>
-                                                <div style={{ color: '#fff', fontSize: '0.9rem', fontWeight: 800 }}>
-                                                    ₹ {player.boughtFor.toFixed(2)} Cr
-                                                </div>
-                                            </div>
-                                        </div>
-                                    ))}
-                                </div>
-                            )}
-                        </div>
-                    )}
-
-                    {activeTab === 'others_squad' && (
-                        <div className="community-panel" style={{ padding: '0 0.5rem', maxHeight: '300px', overflowY: 'auto' }}>
-                            {Object.entries(allSquads).filter(([teamName]) => teamName !== userData.team).length === 0 ? (
-                                <div className="flex items-center justify-center h-full w-full" style={{ padding: '2rem 0' }}>
-                                    <span style={{ color: 'var(--text-tertiary)' }}>No players bought by other teams yet.</span>
-                                </div>
-                            ) : (
-                                <div className="flex-col" style={{ gap: '1.5rem', paddingTop: '0.5rem' }}>
-                                    {Object.entries(allSquads)
-                                        .filter(([teamName]) => teamName !== userData.team)
-                                        .map(([teamName, squad]) => (
-                                            <div key={teamName} className="flex-col" style={{ gap: '0.5rem' }}>
-                                                <div className="flex items-center" style={{ gap: '0.5rem', borderBottom: `2px solid ${TEAM_COLORS[teamName] || '#fff'}`, paddingBottom: '0.25rem' }}>
-                                                    <div style={{ width: '20px', height: '20px' }}>
-                                                        <img src={IPL_LOGOS[teamName]} alt={teamName} style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
-                                                    </div>
-                                                    <span style={{ fontWeight: 800, color: TEAM_COLORS[teamName] || '#fff' }}>{teamName}</span>
-                                                    <span style={{ color: 'var(--text-tertiary)', fontSize: '0.8rem', marginLeft: 'auto' }}>
-                                                        {squad.length} Players
-                                                    </span>
-                                                </div>
-                                                <div className="flex-col" style={{ gap: '0.5rem' }}>
-                                                    {squad.map(player => (
-                                                        <div key={player.id} style={{
-                                                            background: '#1a1a1a',
-                                                            padding: '0.5rem',
-                                                            borderRadius: '6px',
-                                                            display: 'flex',
-                                                            alignItems: 'center',
-                                                            gap: '0.75rem'
-                                                        }}>
-                                                            <div style={{ width: '32px', height: '32px', borderRadius: '50%', background: '#333', overflow: 'hidden', flexShrink: 0 }}>
-                                                                <img src={player.image} alt={player.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                                                            </div>
-                                                            <div className="flex-col-start" style={{ flex: 1 }}>
-                                                                <span style={{ fontWeight: 600, color: '#e5e7eb', fontSize: '0.85rem' }}>{player.name}</span>
-                                                                <span style={{ fontSize: '0.7rem', color: 'var(--text-tertiary)' }}>{player.role}</span>
-                                                            </div>
-                                                            <div style={{ textAlign: 'right', paddingRight: '0.5rem' }}>
-                                                                <div style={{ color: '#10b981', fontSize: '0.85rem', fontWeight: 700 }}>
-                                                                    ₹ {player.boughtFor.toFixed(2)} Cr
+                    {activeTab === 'board' && (
+                        <div className="squad-board-panel" style={{ display: 'flex', flexDirection: 'row', gap: '0.5rem', padding: '0 0.5rem', maxHeight: '350px' }}>
+                            <DragDropContext onDragEnd={handleDragEnd}>
+                                {/* My Squad Column */}
+                                <div style={{ flex: 1, display: 'flex', flexDirection: 'column', background: 'rgba(0,0,0,0.3)', borderRadius: '8px', overflow: 'hidden' }}>
+                                    <div style={{ background: '#111', padding: '0.5rem', textAlign: 'center', fontWeight: 800, fontSize: '0.85rem', letterSpacing: '1px', borderBottom: '2px solid #333' }}>
+                                        MY SQUAD
+                                    </div>
+                                    <Droppable droppableId={userData.team || 'unassigned_my_squad'}>
+                                        {(provided) => (
+                                            <div ref={provided.innerRef} {...provided.droppableProps} style={{ flex: 1, overflowY: 'auto', padding: '0.5rem' }}>
+                                                {(!userData.team || !allSquads[userData.team] || allSquads[userData.team].length === 0) ? (
+                                                    <div style={{ textAlign: 'center', color: '#666', fontSize: '0.8rem', marginTop: '1rem' }}>No players yet</div>
+                                                ) : (
+                                                    allSquads[userData.team].map((player, index) => (
+                                                        <Draggable key={player.id} draggableId={`my_${player.id}`} index={index}>
+                                                            {(provided, snapshot) => (
+                                                                <div
+                                                                    ref={provided.innerRef}
+                                                                    {...provided.draggableProps}
+                                                                    {...provided.dragHandleProps}
+                                                                    style={{
+                                                                        ...provided.draggableProps.style,
+                                                                        display: 'flex',
+                                                                        alignItems: 'center',
+                                                                        background: 'linear-gradient(90deg, #E5C370 0%, #FFF5C3 50%, #E5C370 100%)',
+                                                                        borderRadius: '4px',
+                                                                        padding: '0.25rem 0.5rem',
+                                                                        border: '1px solid #B8860B',
+                                                                        boxShadow: snapshot.isDragging ? '0 8px 16px rgba(0,0,0,0.6)' : '0 2px 4px rgba(0,0,0,0.4)',
+                                                                        marginBottom: '0.4rem',
+                                                                        transform: snapshot.isDragging ? 'scale(1.03)' : provided.draggableProps.style?.transform,
+                                                                        color: '#1A1A1A',
+                                                                        fontWeight: 900
+                                                                    }}
+                                                                >
+                                                                    <div style={{ fontSize: '0.65rem', width: '25px', color: '#555' }}>
+                                                                        {String(player.id).padStart(3, '0')}
+                                                                    </div>
+                                                                    <div style={{ flex: 1, textAlign: 'center', fontSize: '0.75rem', letterSpacing: '0.5px', textTransform: 'uppercase' }}>
+                                                                        {player.name}
+                                                                    </div>
+                                                                    <div style={{ width: '16px', height: '16px', flexShrink: 0 }}>
+                                                                        <img src={IPL_LOGOS[userData.team]} alt="" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+                                                                    </div>
                                                                 </div>
-                                                            </div>
-                                                        </div>
-                                                    ))}
-                                                </div>
+                                                            )}
+                                                        </Draggable>
+                                                    ))
+                                                )}
+                                                {provided.placeholder}
                                             </div>
-                                        ))}
+                                        )}
+                                    </Droppable>
                                 </div>
-                            )}
+
+                                {/* Other Squads Column */}
+                                <div style={{ flex: 1, display: 'flex', flexDirection: 'column', background: 'rgba(0,0,0,0.3)', borderRadius: '8px', overflow: 'hidden' }}>
+                                    <div style={{ background: '#111', padding: '0.5rem', textAlign: 'center', fontWeight: 800, fontSize: '0.85rem', letterSpacing: '1px', borderBottom: '2px solid #333' }}>
+                                        OTHER SQUADS
+                                    </div>
+                                    <div style={{ flex: 1, overflowY: 'auto', padding: '0.5rem' }}>
+                                        {Object.entries(allSquads).filter(([teamName]) => teamName !== userData.team).length === 0 ? (
+                                            <div style={{ textAlign: 'center', color: '#666', fontSize: '0.8rem', marginTop: '1rem' }}>No players yet</div>
+                                        ) : (
+                                            Object.entries(allSquads).filter(([teamName]) => teamName !== userData.team).map(([teamName, squad]) => (
+                                                <div key={teamName} style={{ marginBottom: '1rem' }}>
+                                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', marginBottom: '0.4rem', borderBottom: `1px solid ${TEAM_COLORS[teamName] || '#555'}`, paddingBottom: '0.2rem' }}>
+                                                        <img src={IPL_LOGOS[teamName]} style={{ width: '14px', height: '14px' }} alt="" />
+                                                        <span style={{ fontSize: '0.75rem', fontWeight: 800, color: TEAM_COLORS[teamName] || '#fff' }}>{teamName}</span>
+                                                    </div>
+                                                    <Droppable droppableId={teamName}>
+                                                        {(provided) => (
+                                                            <div ref={provided.innerRef} {...provided.droppableProps} style={{ minHeight: '10px' }}>
+                                                                {squad.map((player, index) => (
+                                                                    <Draggable key={player.id} draggableId={`other_${teamName}_${player.id}`} index={index}>
+                                                                        {(provided, snapshot) => (
+                                                                            <div
+                                                                                ref={provided.innerRef}
+                                                                                {...provided.draggableProps}
+                                                                                {...provided.dragHandleProps}
+                                                                                style={{
+                                                                                    ...provided.draggableProps.style,
+                                                                                    display: 'flex',
+                                                                                    alignItems: 'center',
+                                                                                    background: 'linear-gradient(90deg, #E5C370 0%, #FFF5C3 50%, #E5C370 100%)',
+                                                                                    borderRadius: '4px',
+                                                                                    padding: '0.25rem 0.5rem',
+                                                                                    border: '1px solid #B8860B',
+                                                                                    boxShadow: snapshot.isDragging ? '0 8px 16px rgba(0,0,0,0.6)' : '0 2px 4px rgba(0,0,0,0.4)',
+                                                                                    marginBottom: '0.4rem',
+                                                                                    transform: snapshot.isDragging ? 'scale(1.03)' : provided.draggableProps.style?.transform,
+                                                                                    color: '#1A1A1A',
+                                                                                    fontWeight: 900
+                                                                                }}
+                                                                            >
+                                                                                <div style={{ fontSize: '0.65rem', width: '25px', color: '#555' }}>
+                                                                                    {String(player.id).padStart(3, '0')}
+                                                                                </div>
+                                                                                <div style={{ flex: 1, textAlign: 'center', fontSize: '0.75rem', letterSpacing: '0.5px', textTransform: 'uppercase' }}>
+                                                                                    {player.name}
+                                                                                </div>
+                                                                                <div style={{ width: '16px', height: '16px', flexShrink: 0 }}>
+                                                                                    <img src={IPL_LOGOS[teamName]} alt="" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+                                                                                </div>
+                                                                            </div>
+                                                                        )}
+                                                                    </Draggable>
+                                                                ))}
+                                                                {provided.placeholder}
+                                                            </div>
+                                                        )}
+                                                    </Droppable>
+                                                </div>
+                                            ))
+                                        )}
+                                    </div>
+                                </div>
+                            </DragDropContext>
                         </div>
                     )}
 
