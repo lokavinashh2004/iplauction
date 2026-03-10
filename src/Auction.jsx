@@ -178,7 +178,7 @@ export default function Auction({ userData, onEnd }) {
 
     // Host exclusively drives the game clock to prevent client drift
     useEffect(() => {
-        if (!isHost || auctionState.isSold || isPaused || auctionState.isAuctionOver) return;
+        if (!isHost || auctionState.isSold || isPaused || auctionState.isAuctionOver || auctionState.isSetTransition) return;
 
         if (auctionState.timer <= 0) {
             const originalBuyer = auctionState.currentBidTeam || 'UNSOLD';
@@ -189,7 +189,7 @@ export default function Auction({ userData, onEnd }) {
             if (!auctionState.isRtmPhase && !auctionState.isRtmUsedThisPlayer && originalBuyer !== 'UNSOLD' && isPrevTeamActive && prevTeamName && prevTeamName !== originalBuyer) {
                 const prevTeamUser = Object.keys(roomUsers).find(name => roomUsers[name].team === prevTeamName);
                 const rtmCount = prevTeamUser && roomUsers[prevTeamUser].rtms !== undefined ? roomUsers[prevTeamUser].rtms : 3;
-                const prevPurse = prevTeamUser ? (roomUsers[prevTeamUser].purse !== undefined ? roomUsers[prevTeamUser].purse : 100.0) : 0;
+                const prevPurse = prevTeamUser ? (roomUsers[prevTeamUser].purse !== undefined ? roomUsers[prevTeamUser].purse : 120.0) : 0;
                 const prevSquadSize = allSquads[prevTeamName] ? allSquads[prevTeamName].length : 0;
                 const prevOverseasCount = allSquads[prevTeamName] ? allSquads[prevTeamName].filter(p => p.country && p.country !== 'IND').length : 0;
                 const isPlayerOverseas = currentPlayer.country && currentPlayer.country !== 'IND';
@@ -226,7 +226,7 @@ export default function Auction({ userData, onEnd }) {
                 // Find user doc by team
                 const buyerName = Object.keys(roomUsers).find(name => roomUsers[name].team === finalBuyer);
                 if (buyerName) {
-                    const currentPurse = roomUsers[buyerName]?.purse !== undefined ? roomUsers[buyerName].purse : 100.0;
+                    const currentPurse = roomUsers[buyerName]?.purse !== undefined ? roomUsers[buyerName].purse : 120.0;
                     const newPurse = currentPurse - auctionState.currentBid;
                     const rtmCount = roomUsers[buyerName]?.rtms !== undefined ? roomUsers[buyerName].rtms : 3;
 
@@ -265,32 +265,68 @@ export default function Auction({ userData, onEnd }) {
                 set(ref(db, `rooms/${userData.roomId}/activityLog`), [logEntry, ...existingLogs].slice(0, 50));
             });
 
-            // After a 3 second delay, load the next player
+            // After a 3 second delay, load the next player (or transition)
             setTimeout(() => {
                 const nextIndex = auctionState.currentPlayerIndex + 1;
-                if (nextIndex >= PLAYERS_DATA.length) {
+                const nextPlayer = nextIndex >= PLAYERS_DATA.length ? null : PLAYERS_DATA[nextIndex];
+
+                if (!nextPlayer) {
                     set(ref(db, `rooms/${userData.roomId}/auctionState`), {
                         ...auctionState,
                         isAuctionOver: true,
                         timer: 0
                     });
                 } else {
-                    const nextPlayer = PLAYERS_DATA[nextIndex];
-                    get(ref(db, `rooms/${userData.roomId}/settings/timer`)).then(snap => {
-                        const currentTimerVal = snap.val() || 15;
+                    const currentSet = currentPlayer.set || 'M1';
+                    const nextSet = nextPlayer.set || 'M1';
+
+                    if (currentSet !== nextSet) {
+                        // Change to set transition state
                         set(ref(db, `rooms/${userData.roomId}/auctionState`), {
-                            activePlayer: nextPlayer,
-                            currentPlayerIndex: nextIndex,
-                            currentBid: parseFloat(nextPlayer.basePrice),
-                            currentBidTeam: null,
-                            timer: currentTimerVal,
-                            isSold: false,
-                            soldTo: null,
-                            isRtmPhase: false,
-                            isRtmUsedThisPlayer: false,
-                            rtmTeam: null
+                            ...auctionState,
+                            isSold: true, // Keep it sold so the hook does not re-trigger
+                            isSetTransition: true,
+                            transitionSet: nextSet,
+                            timer: 0
                         });
-                    });
+
+                        // Wait for transition duration (3.5s) then advance
+                        setTimeout(() => {
+                            get(ref(db, `rooms/${userData.roomId}/settings/timer`)).then(snap => {
+                                const currentTimerVal = snap.val() || 15;
+                                set(ref(db, `rooms/${userData.roomId}/auctionState`), {
+                                    activePlayer: nextPlayer,
+                                    currentPlayerIndex: nextIndex,
+                                    currentBid: parseFloat(nextPlayer.basePrice),
+                                    currentBidTeam: null,
+                                    timer: currentTimerVal,
+                                    isSold: false,
+                                    soldTo: null,
+                                    isRtmPhase: false,
+                                    isRtmUsedThisPlayer: false,
+                                    rtmTeam: null,
+                                    isSetTransition: false
+                                });
+                            });
+                        }, 3500);
+                    } else {
+                        // Normal advance
+                        get(ref(db, `rooms/${userData.roomId}/settings/timer`)).then(snap => {
+                            const currentTimerVal = snap.val() || 15;
+                            set(ref(db, `rooms/${userData.roomId}/auctionState`), {
+                                activePlayer: nextPlayer,
+                                currentPlayerIndex: nextIndex,
+                                currentBid: parseFloat(nextPlayer.basePrice),
+                                currentBidTeam: null,
+                                timer: currentTimerVal,
+                                isSold: false,
+                                soldTo: null,
+                                isRtmPhase: false,
+                                isRtmUsedThisPlayer: false,
+                                rtmTeam: null
+                            });
+                        });
+                    }
                 }
             }, 3000);
 
@@ -358,7 +394,7 @@ export default function Auction({ userData, onEnd }) {
 
     const getTeamPurse = (teamName) => {
         const teamUser = Object.keys(roomUsers).find(name => roomUsers[name].team === teamName);
-        return teamUser && roomUsers[teamUser].purse !== undefined ? roomUsers[teamUser].purse : 100.00;
+        return teamUser && roomUsers[teamUser].purse !== undefined ? roomUsers[teamUser].purse : 120.00;
     };
 
     const getTeamRtms = (teamName) => {
@@ -428,7 +464,7 @@ export default function Auction({ userData, onEnd }) {
                         const overseas = squad.filter(p => p.country && p.country !== 'IND');
                         const totalSpent = squad.reduce((s, p) => s + (p.boughtFor || 0), 0);
                         const teamUser = Object.values(roomUsers).find(u => u.team === teamName);
-                        const purseLeft = teamUser ? (teamUser.purse !== undefined ? teamUser.purse : 100 - totalSpent) : (100 - totalSpent);
+                        const purseLeft = teamUser ? (teamUser.purse !== undefined ? teamUser.purse : 120 - totalSpent) : (120 - totalSpent);
                         const isComplete = squad.length >= 18;
                         const tc = TEAM_COLORS[teamName];
 
@@ -531,6 +567,43 @@ export default function Auction({ userData, onEnd }) {
 
     return (
         <div className="center-panel" style={{ position: 'relative' }}>
+            {/* SET TRANSITION OVERLAY */}
+            {auctionState.isSetTransition && (
+                <div style={{
+                    position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh',
+                    background: 'rgba(0,0,0,0.85)', backdropFilter: 'blur(8px)', zIndex: 10000,
+                    display: 'flex', alignItems: 'center', justifyContent: 'center'
+                }}>
+                    <div className="set-transition-card animate-fade-in" style={{
+                        background: 'linear-gradient(180deg, #111827 0%, #000 100%)',
+                        border: '2px solid rgba(212, 175, 55, 0.4)',
+                        borderRadius: '16px', padding: '3rem', textAlign: 'center',
+                        maxWidth: '500px', boxShadow: '0 0 50px rgba(212, 175, 55, 0.2), inset 0 0 20px rgba(212, 175, 55, 0.1)',
+                        animation: 'slide-zoom-in 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards'
+                    }}>
+                        <div style={{
+                            color: '#fbbf24', fontSize: '1rem', fontWeight: 800, letterSpacing: '3px',
+                            marginBottom: '1rem', textTransform: 'uppercase'
+                        }}>
+                            Set Completed
+                        </div>
+                        <h2 style={{
+                            color: '#fff', fontSize: '2rem', fontWeight: 900, marginBottom: '2rem',
+                            textShadow: '0 4px 15px rgba(0,0,0,0.5)'
+                        }}>NEXT SET STARTING</h2>
+                        <div style={{
+                            background: 'rgba(212, 175, 55, 0.15)', padding: '1rem 2rem',
+                            borderRadius: '8px', border: '1px solid rgba(212, 175, 55, 0.5)',
+                            display: 'inline-block'
+                        }}>
+                            <span style={{ color: '#D4AF37', fontSize: '1.5rem', fontWeight: 900, letterSpacing: '2px' }}>
+                                {auctionState.transitionSet}
+                            </span>
+                        </div>
+                    </div>
+                </div>
+            )}
+
             {auctionState.isRtmPhase && (
                 <div style={{ position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', background: 'rgba(0,0,0,0.85)', zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                     <div style={{ background: '#111', border: `3px solid ${TEAM_COLORS[auctionState.rtmTeam] || '#B8860B'}`, borderRadius: '12px', padding: '2rem', textAlign: 'center', maxWidth: '400px', boxShadow: '0 10px 30px rgba(0,0,0,0.5)' }}>

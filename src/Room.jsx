@@ -245,7 +245,7 @@ export default function Room({ userData, setUserData, isHost }) {
 
                             <div className="settings-row justify-between border-none">
                                 <span>Starting Purse</span>
-                                <span style={{ color: '#10b981', fontWeight: 600, fontSize: '0.875rem' }}>₹0 Cr</span>
+                                <span style={{ color: '#10b981', fontWeight: 600, fontSize: '0.875rem' }}>₹120 Cr</span>
                             </div>
                         </div>
                     )}

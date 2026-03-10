@@ -2070,3 +2070,20 @@
 .btn-solid-red:active:not(:disabled) {
   transform: translateY(0);
 }
+
+@keyframes slide-zoom-in {
+  0% {
+    opacity: 0;
+    transform: translateY(40px) scale(0.9);
+  }
+
+  50% {
+    opacity: 1;
+    transform: translateY(-10px) scale(1.02);
+  }
+
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
