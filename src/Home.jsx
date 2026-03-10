@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { db } from './firebase';
-import { ref, set, onValue, onDisconnect } from 'firebase/database';
+import { ref, set, onValue, onDisconnect, get } from 'firebase/database';
 
 const IPL_TEAMS = ['MI', 'CSK', 'RCB', 'KKR', 'DC', 'PBKS', 'RR', 'SRH', 'GT', 'LSG'];
 
@@ -80,6 +80,28 @@ export default function Home({ userData, setUserData, onJoin }) {
                 await set(ref(db, `rooms/${roomId}/host`), userData.name);
                 window.location.hash = `room=${roomId}`;
             }
+
+            const newLogs = [];
+            newLogs.push({
+                id: Date.now() + 1,
+                type: 'JOIN',
+                timestamp: Date.now() + 1,
+                userName: userData.name
+            });
+
+            if (isCreating && userData.team) {
+                newLogs.unshift({
+                    id: Date.now() + 2,
+                    type: 'TEAM_SELECT',
+                    team: userData.team,
+                    userName: userData.name,
+                    timestamp: Date.now() + 2
+                });
+            }
+
+            const logSnap = await get(ref(db, `rooms/${roomId}/activityLog`));
+            const existingLogs = logSnap.val() ? (Array.isArray(logSnap.val()) ? logSnap.val() : Object.values(logSnap.val())) : [];
+            await set(ref(db, `rooms/${roomId}/activityLog`), [...newLogs, ...existingLogs].slice(0, 50));
 
             setUserData({ ...userData, roomId, team: isCreating ? userData.team : null, hasJoined: true });
             onJoin();

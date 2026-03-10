@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { db } from './firebase';
-import { ref, onValue, set } from 'firebase/database';
+import { ref, onValue, set, get } from 'firebase/database';
 
 const IPL_LOGOS = {
     MI: 'https://upload.wikimedia.org/wikipedia/en/thumb/c/cd/Mumbai_Indians_Logo.svg/200px-Mumbai_Indians_Logo.svg.png',
@@ -15,19 +15,45 @@ const IPL_LOGOS = {
     LSG: 'https://upload.wikimedia.org/wikipedia/en/thumb/a/a9/Lucknow_Super_Giants_IPL_Logo.svg/200px-Lucknow_Super_Giants_IPL_Logo.svg.png'
 };
 
+const TEAM_FULL_NAMES = {
+    MI: 'Mumbai',
+    CSK: 'Chennai',
+    RCB: 'Bangalore',
+    KKR: 'Kolkata',
+    DC: 'Delhi',
+    PBKS: 'Punjab',
+    RR: 'Rajasthan',
+    SRH: 'Hyderabad',
+    GT: 'Gujarat',
+    LSG: 'Lucknow'
+};
+
 export default function Room({ userData, setUserData }) {
     const [activeTab, setActiveTab] = useState('settings');
 
-    const handleTeamSelect = (t) => {
+    const handleTeamSelect = async (t) => {
         if (!setUserData) return;
         const isTaken = Object.values(users).some(u => u.team === t);
         if (isTaken && userData.team !== t) return;
 
-        set(ref(db, `rooms/${userData.roomId}/users/${userData.name}/team`), t);
+        await set(ref(db, `rooms/${userData.roomId}/users/${userData.name}/team`), t);
         setUserData({ ...userData, team: t });
+
+        // Push TEAM_SELECT event to activityLog
+        const logEntry = {
+            id: Date.now(),
+            type: 'TEAM_SELECT',
+            team: t,
+            userName: userData.name,
+            timestamp: Date.now()
+        };
+        const logSnap = await get(ref(db, `rooms/${userData.roomId}/activityLog`));
+        const existingLogs = logSnap.val() ? (Array.isArray(logSnap.val()) ? logSnap.val() : Object.values(logSnap.val())) : [];
+        await set(ref(db, `rooms/${userData.roomId}/activityLog`), [logEntry, ...existingLogs].slice(0, 50));
     };
     const [timer, setTimer] = useState(15);
     const [users, setUsers] = useState({});
+    const [activityLog, setActivityLog] = useState([]);
 
     useEffect(() => {
         if (!userData.roomId) return;
@@ -38,6 +64,12 @@ export default function Room({ userData, setUserData }) {
                 setUsers(data.users || {});
                 if (data.settings && data.settings.timer) {
                     setTimer(data.settings.timer);
+                }
+                if (data.activityLog) {
+                    const logs = Array.isArray(data.activityLog) ? data.activityLog : Object.values(data.activityLog);
+                    setActivityLog(logs.sort((a, b) => b.timestamp - a.timestamp));
+                } else {
+                    setActivityLog([]);
                 }
             } else {
                 setUsers({});
@@ -162,7 +194,7 @@ export default function Room({ userData, setUserData }) {
                     </button>
                     <button className={`room-tab ${activeTab === 'chat' ? 'active-orange' : ''}`} onClick={() => setActiveTab('chat')}>
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>
-                        Chat
+                        Activity
                     </button>
                     <button className={`room-tab ${activeTab === 'settings' ? 'active-purple' : ''}`} onClick={() => setActiveTab('settings')}>
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
@@ -211,17 +243,36 @@ export default function Room({ userData, setUserData }) {
 
                     {activeTab === 'chat' && (
                         <div className="chat-panel">
-                            <div className="chat-history">
-                                <div className="chat-msg">
-                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#10b981" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
-                                    <span style={{ color: '#10b981', fontWeight: 600 }}>{userData.name || 'Bot'}</span> joined
-                                </div>
-                                <div className="chat-msg">
-                                    <span className={`chat-team-mini ${userData.team ? userData.team.toLowerCase() : 'mi'}`}>{userData.team || 'MI'}</span>
-                                    <span style={{ fontWeight: 600 }}>{userData.name || 'Bot'}</span> selected <span style={{ color: '#3b82f6' }}>Mumbai</span>
-                                </div>
+                            <div className="chat-history" style={{ display: 'flex', flexDirection: 'column-reverse', background: 'transparent' }}>
+                                {activityLog.map(log => (
+                                    <div className="chat-msg" key={log.id} style={{ background: 'transparent', padding: '0.25rem 0' }}>
+                                        {log.type === 'JOIN' && (
+                                            <>
+                                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#10b981" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+                                                <span style={{ color: '#10b981', fontWeight: 600 }}>{log.userName}</span> joined
+                                            </>
+                                        )}
+                                        {log.type === 'TEAM_SELECT' && (
+                                            <>
+                                                <span className={`chat-team-mini ${log.team ? log.team.toLowerCase() : 'mi'}`} style={{ fontWeight: 800 }}>{log.team}</span>
+                                                <span style={{ fontWeight: 600 }}>{log.userName}</span> selected <span style={{ color: '#FCCA06' }}>{TEAM_FULL_NAMES[log.team] || log.team}</span>
+                                            </>
+                                        )}
+                                        {log.status === 'SOLD' && (
+                                            <>
+                                                <span className={`chat-team-mini ${log.team ? log.team.toLowerCase() : 'mi'}`} style={{ fontWeight: 800 }}>{log.team}</span>
+                                                <span style={{ fontWeight: 600 }}>{log.team}</span> bought <span style={{ color: '#10b981' }}>{log.playerName}</span> for <span style={{ color: '#FCCA06' }}>₹ {log.price.toFixed(2)} Cr</span>
+                                            </>
+                                        )}
+                                        {log.status === 'UNSOLD' && (
+                                            <>
+                                                <span style={{ fontWeight: 600, color: '#ef4444' }}>UNSOLD</span>
+                                                <span style={{ fontWeight: 600 }}>{log.playerName}</span> went unsold
+                                            </>
+                                        )}
+                                    </div>
+                                ))}
                             </div>
-                            <input type="text" className="chat-input" placeholder="Say something..." />
                         </div>
                     )}
 

@@ -413,39 +413,33 @@ export default function Auction({ userData, onEnd }) {
                                     <span style={{ color: 'var(--text-tertiary)' }}>No recent activity.</span>
                                 </div>
                             ) : (
-                                <div className="flex-col" style={{ gap: '0.5rem', paddingTop: '0.5rem' }}>
+                                <div className="chat-history" style={{ display: 'flex', flexDirection: 'column', background: 'transparent', gap: '0.25rem', paddingTop: '0.5rem' }}>
                                     {activityLog.map(log => (
-                                        <div key={log.id} style={{
-                                            background: '#1a1a1a',
-                                            padding: '0.75rem 1rem',
-                                            borderRadius: '8px',
-                                            borderLeft: `4px solid ${log.status === 'SOLD' ? TEAM_COLORS[log.team] || '#10b981' : '#ef4444'}`,
-                                            display: 'flex',
-                                            justifyContent: 'space-between',
-                                            alignItems: 'center'
-                                        }}>
-                                            <div className="flex-col-start">
-                                                <span style={{ fontWeight: 600, color: '#fff', fontSize: '0.9rem' }}>{log.playerName}</span>
-                                                <span style={{ fontSize: '0.75rem', color: 'var(--text-tertiary)' }}>
-                                                    {new Date(log.timestamp).toLocaleTimeString()}
-                                                </span>
-                                            </div>
-                                            <div style={{ textAlign: 'right' }}>
-                                                {log.status === 'SOLD' ? (
-                                                    <>
-                                                        <div style={{ color: TEAM_COLORS[log.team] || '#10b981', fontWeight: 800, fontSize: '0.9rem' }}>
-                                                            {log.team}
-                                                        </div>
-                                                        <div style={{ color: '#fff', fontSize: '0.8rem', fontWeight: 600 }}>
-                                                            ₹ {log.price.toFixed(2)} Cr
-                                                        </div>
-                                                    </>
-                                                ) : (
-                                                    <div style={{ color: '#ef4444', fontWeight: 800, fontSize: '0.9rem' }}>
-                                                        UNSOLD
-                                                    </div>
-                                                )}
-                                            </div>
+                                        <div className="chat-msg" key={log.id} style={{ background: 'transparent', padding: '0.25rem 0', display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.9rem' }}>
+                                            {log.type === 'JOIN' && (
+                                                <>
+                                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#10b981" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+                                                    <span style={{ color: '#10b981', fontWeight: 600 }}>{log.userName}</span> joined
+                                                </>
+                                            )}
+                                            {log.type === 'TEAM_SELECT' && (
+                                                <>
+                                                    <span className={`chat-team-mini ${log.team ? log.team.toLowerCase() : 'mi'}`} style={{ fontWeight: 800 }}>{log.team}</span>
+                                                    <span style={{ fontWeight: 600 }}>{log.userName}</span> selected <span style={{ color: '#FCCA06' }}>{TEAM_FULL_NAMES[log.team] || log.team}</span>
+                                                </>
+                                            )}
+                                            {log.status === 'SOLD' && (
+                                                <>
+                                                    <span className={`chat-team-mini ${log.team ? log.team.toLowerCase() : 'mi'}`} style={{ fontWeight: 800 }}>{log.team}</span>
+                                                    <span style={{ fontWeight: 600 }}>{log.team}</span> bought <span style={{ color: '#10b981' }}>{log.playerName}</span> for <span style={{ color: '#FCCA06' }}>₹ {log.price?.toFixed(2)} Cr</span>
+                                                </>
+                                            )}
+                                            {log.status === 'UNSOLD' && (
+                                                <>
+                                                    <span style={{ fontWeight: 600, color: '#ef4444' }}>UNSOLD</span>
+                                                    <span style={{ fontWeight: 600 }}>{log.playerName}</span> went unsold
+                                                </>
+                                            )}
                                         </div>
                                     ))}
                                 </div>
