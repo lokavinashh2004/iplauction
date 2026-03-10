@@ -542,23 +542,31 @@ export default function Auction({ userData, onEnd }) {
                         </div>
                     </div>
 
+                    {/* Player name + role below avatar */}
+                    <div className="player-name-block">
+                        <div className="player-full-name">{activePlayer.firstName} {activePlayer.lastName}</div>
+                        <div className="player-role-country">
+                            {activePlayer.role}<span className="role-dot">•</span>{activePlayer.country === 'IND' ? 'India' : activePlayer.country === 'WI' ? 'West Indies' : activePlayer.country === 'AUS' ? 'Australia' : activePlayer.country === 'ENG' ? 'England' : activePlayer.country === 'SA' ? 'South Africa' : activePlayer.country === 'NZ' ? 'New Zealand' : activePlayer.country === 'AFG' ? 'Afghanistan' : activePlayer.country === 'SL' ? 'Sri Lanka' : activePlayer.country === 'BAN' ? 'Bangladesh' : activePlayer.country === 'PAK' ? 'Pakistan' : activePlayer.country}
+                        </div>
+                    </div>
+
                     <div className="bid-stats-container">
-                        <div className="bid-box skewed left" style={{ backgroundColor: isSold && buyingTeam !== 'UNSOLD' ? teamColor : '#026a64', borderColor: isSold && buyingTeam !== 'UNSOLD' ? teamColor : '#55e6d9', transition: 'all 0.5s ease' }}>
+                        <div className="bid-box skewed left" style={{ backgroundColor: isSold && buyingTeam !== 'UNSOLD' ? teamColor : undefined, borderColor: isSold && buyingTeam !== 'UNSOLD' ? teamColor : '#55e6d9', transition: 'all 0.5s ease' }}>
                             <div>
                                 <div className="bid-label">BASE PRICE</div>
                                 <div className="bid-value">₹ {activePlayer.basePrice}Cr</div>
                             </div>
                         </div>
 
-                        <div className="bid-box main-name" style={{ backgroundColor: isSold && buyingTeam !== 'UNSOLD' ? teamColor : '#026a64', borderColor: isSold && buyingTeam !== 'UNSOLD' ? teamColor : '#55e6d9', transition: 'all 0.5s ease' }}>
+                        <div className="bid-box main-name" style={{ display: 'none' }}>
                             <div className="player-first-name">{activePlayer.firstName}</div>
                             <div className="player-last-name">{activePlayer.lastName}</div>
                         </div>
 
-                        <div className="bid-box skewed right" style={{ backgroundColor: isSold && buyingTeam !== 'UNSOLD' ? teamColor : '#026a64', borderColor: isSold && buyingTeam !== 'UNSOLD' ? teamColor : '#55e6d9', transition: 'all 0.5s ease' }}>
+                        <div className="bid-box skewed right" style={{ backgroundColor: isSold && buyingTeam !== 'UNSOLD' ? teamColor : undefined, borderColor: isSold && buyingTeam !== 'UNSOLD' ? teamColor : '#D4AF37', transition: 'all 0.5s ease' }}>
                             <div>
                                 <div className="bid-label">CURRENT BID</div>
-                                <div className="bid-value">₹ {(auctionState.currentBid || 0).toFixed(2)}Cr</div>
+                                <div className="bid-value">₹ {(auctionState.currentBid || 0).toFixed(2)} Cr</div>
                                 {auctionState.currentBidTeam && (
                                     <div style={{ display: 'flex', justifyContent: 'center', marginTop: '10px' }}>
                                         <div style={{
@@ -603,12 +611,11 @@ export default function Auction({ userData, onEnd }) {
                         </div>
                     </div>
 
-                    <div className="player-details-strip" style={{ backgroundColor: isSold && buyingTeam !== 'UNSOLD' ? teamColor : '#065f5a', borderColor: isSold && buyingTeam !== 'UNSOLD' ? teamColor : '#55e6d9', transition: 'all 0.5s ease' }}>
-                        <span>{activePlayer.role}</span> <span className="details-separator">|</span>
-                        <span>AGE {activePlayer.age}</span> <span className="details-separator">|</span>
-                        <span>COUNTRY {activePlayer.country}</span> <span className="details-separator">|</span>
-                        <span>PREV TEAM {activePlayer.previousTeam}</span> <span className="details-separator">|</span>
-                        <span style={{ color: '#10b981', fontWeight: 600 }}>IPL STAT {activePlayer.iplStat}</span>
+                    <div className="player-details-strip">
+                        <span>Age {activePlayer.age}</span> <span className="details-separator">|</span>
+                        <span>{activePlayer.country}</span> <span className="details-separator">|</span>
+                        <span>Prev Team {activePlayer.previousTeam}</span> <span className="details-separator">|</span>
+                        <span style={{ color: '#10b981', fontWeight: 700 }}>{activePlayer.iplStat}</span>
                     </div>
 
                     <div className="flex items-center w-full px-4 pb-4" style={{ gap: '0.5rem', background: '#121212', paddingTop: '1rem', marginTop: '-1rem', zIndex: 100, position: 'relative' }}>
