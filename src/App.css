@@ -98,76 +98,247 @@
   height: 14px;
 }
 
-/* Headlines */
-.hero-title {
-  font-size: clamp(2.5rem, 6vw, 4rem);
-  font-weight: 900;
-  line-height: 1.1;
-  text-align: center;
-  margin-bottom: 2rem;
-  letter-spacing: -0.02em;
+/* ──────────────────────────────────────────────────────────
+   NEW FULL SCREEN HOME HERO
+   ────────────────────────────────────────────────────────── */
+.home-hero {
+  position: relative;
+  width: 100vw;
+  height: 100vh;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  overflow: hidden;
+  background: #000;
 }
 
-.hero-subtitle {
-  color: var(--accent-orange);
+.home-hero-bg {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: url('/ipl-hero-bg.png') center/cover no-repeat;
+  z-index: 1;
+  /* slight zoom effect on load */
+  animation: bg-zoom 20s infinite alternate ease-in-out;
 }
 
-/* Banner List */
-.banner-list {
+@keyframes bg-zoom {
+  0% {
+    transform: scale(1);
+  }
+
+  100% {
+    transform: scale(1.05);
+  }
+}
+
+.home-hero-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: radial-gradient(circle at center, rgba(0, 0, 0, 0.2) 0%, rgba(0, 0, 0, 0.8) 100%);
+  z-index: 2;
+}
+
+.home-hero-content {
+  position: relative;
+  z-index: 10;
   display: flex;
   flex-direction: column;
-  gap: 0.75rem;
-  width: 100%;
-  margin-bottom: 2rem;
+  align-items: center;
+  text-align: center;
+  max-width: 800px;
+  padding: 0 1rem;
 }
 
-.banner-item {
+.home-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.35rem 1rem;
+  border-radius: 999px;
+  border: 1px solid rgba(212, 175, 55, 0.3);
+  background: rgba(0, 0, 0, 0.5);
+  color: #D4AF37;
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  margin-bottom: 2rem;
+  backdrop-filter: blur(4px);
+}
+
+.home-hero-title {
+  font-size: clamp(3rem, 8vw, 5.5rem);
+  font-weight: 900;
+  line-height: 1.05;
+  color: #ffffff;
+  margin-bottom: 1.5rem;
+  letter-spacing: -0.02em;
+  text-shadow: 0 4px 20px rgba(0, 0, 0, 0.8);
+}
+
+.home-hero-sub {
+  color: #fbbf24;
+  text-shadow: 0 4px 20px rgba(251, 191, 36, 0.4);
+}
+
+.home-list-badge {
+  background: rgba(0, 0, 0, 0.6);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  padding: 0.5rem 1.25rem;
+  border-radius: 8px;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.85rem;
+  color: #fff;
+  font-weight: 500;
+  margin-bottom: 3rem;
+  backdrop-filter: blur(8px);
+}
+
+.home-cta-group {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  width: 100%;
+  max-width: 400px;
+}
+
+.home-btn-create {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  padding: 0.75rem 1rem;
+  justify-content: center;
+  gap: 0.75rem;
+  width: 100%;
+  padding: 1.2rem;
   border-radius: 8px;
-  font-size: 0.875rem;
-  font-weight: 500;
-  border: 1px solid var(--border-color);
-  background-color: rgba(255, 255, 255, 0.02);
-  transition: border-color 0.2s;
+  background: linear-gradient(135deg, #f59e0b, #ea580c);
+  color: #fff;
+  font-size: 1.15rem;
+  font-weight: 800;
+  border: none;
+  cursor: pointer;
+  box-shadow: 0 10px 25px rgba(234, 88, 12, 0.4), inset 0 2px 4px rgba(255, 255, 255, 0.3);
+  transition: transform 0.2s, box-shadow 0.2s;
 }
 
-.banner-item.orange {
-  border-color: rgba(245, 158, 11, 0.3);
+.home-btn-create:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 15px 30px rgba(234, 88, 12, 0.5), inset 0 2px 4px rgba(255, 255, 255, 0.4);
 }
 
-.banner-item.purple {
-  border-color: rgba(168, 85, 247, 0.3);
-}
-
-.banner-item.green {
-  border-color: rgba(16, 185, 129, 0.3);
-}
-
-.banner-tag {
-  font-size: 0.65rem;
-  padding: 0.15rem 0.4rem;
-  border-radius: 4px;
-  font-weight: 700;
-  letter-spacing: 0.05em;
-  text-transform: uppercase;
-}
-
-.bg-orange {
-  background-color: rgba(245, 158, 11, 0.2);
-  color: #fbbf24;
-}
-
-.bg-green {
-  background-color: rgba(16, 185, 129, 0.2);
+.home-btn-join {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+  width: 100%;
+  padding: 1.2rem;
+  border-radius: 8px;
+  background: rgba(16, 185, 129, 0.1);
   color: #34d399;
+  font-size: 1.15rem;
+  font-weight: 800;
+  border: 1px solid rgba(16, 185, 129, 0.4);
+  cursor: pointer;
+  backdrop-filter: blur(8px);
+  transition: background 0.2s, border-color 0.2s;
 }
 
-.bg-neutral {
-  background-color: rgba(255, 255, 255, 0.1);
-  color: #ffffff;
+.home-btn-join:hover {
+  background: rgba(16, 185, 129, 0.2);
+  border-color: rgba(16, 185, 129, 0.8);
+}
+
+.home-btn-join-submit {
+  width: 100%;
+  padding: 1rem;
+  border-radius: 8px;
+  background: linear-gradient(135deg, #10b981, #059669);
+  color: #fff;
+  font-size: 1.1rem;
+  font-weight: 800;
+  border: none;
+  cursor: pointer;
+  box-shadow: 0 4px 15px rgba(16, 185, 129, 0.3);
+  margin-top: 1rem;
+}
+
+.home-form-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(6px);
+  padding: 1rem;
+}
+
+.home-form-card {
+  background: #111827;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 16px;
+  padding: 2rem;
+  width: 100%;
+  max-width: 480px;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.7);
+  animation: slide-up 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes slide-up {
+  from {
+    opacity: 0;
+    transform: translateY(30px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.home-form-header {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 2rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  padding-bottom: 1rem;
+}
+
+.home-back-btn {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: #fff;
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.home-back-btn:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.home-form-title {
+  font-size: 1.25rem;
+  font-weight: 800;
+  color: #fff;
 }
 
 /* Interactive Card */
