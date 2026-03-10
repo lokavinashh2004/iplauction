@@ -328,20 +328,22 @@ export default function Auction({ userData, onEnd }) {
     const myRtms = roomUsers[userData.name]?.rtms !== undefined ? roomUsers[userData.name].rtms : 3;
     const nextBidAmount = auctionState.currentBid ? auctionState.currentBid + 0.5 : parseFloat(activePlayer.basePrice);
 
-    // Check if the current user represents a team, and if that team is currently leading the bid
-    const isMyTeamLeading = Boolean(userData.team && auctionState.currentBidTeam === userData.team);
+    const actualMyTeam = roomUsers[userData.name]?.team || userData.team;
 
-    const mySquadSize = userData.team && allSquads[userData.team] ? allSquads[userData.team].length : 0;
+    // Check if the current user represents a team, and if that team is currently leading the bid
+    const isMyTeamLeading = Boolean(actualMyTeam && auctionState.currentBidTeam === actualMyTeam);
+
+    const mySquadSize = actualMyTeam && allSquads[actualMyTeam] ? allSquads[actualMyTeam].length : 0;
     const isSquadFull = mySquadSize >= 25;
 
-    const myOverseasCount = userData.team && allSquads[userData.team]
-        ? allSquads[userData.team].filter(p => p.country && p.country !== 'IND').length
+    const myOverseasCount = actualMyTeam && allSquads[actualMyTeam]
+        ? allSquads[actualMyTeam].filter(p => p.country && p.country !== 'IND').length
         : 0;
     const isPlayerOverseas = activePlayer.country && activePlayer.country !== 'IND';
     const isOverseasLimitReached = myOverseasCount >= 8 && isPlayerOverseas;
 
     // The user can only bid if they are a team, they aren't currently leading, they have enough purse, the game isn't paused, the squad isn't full, and the overseas limit isn't reached, and it isn't RTM phase
-    const canBid = Boolean(userData.team && !isMyTeamLeading && nextBidAmount <= myPurse && !isPaused && !isSquadFull && !isOverseasLimitReached && !auctionState.isRtmPhase);
+    const canBid = Boolean(actualMyTeam && !isMyTeamLeading && nextBidAmount <= myPurse && !isPaused && !isSquadFull && !isOverseasLimitReached && !auctionState.isRtmPhase);
 
     const handlePlaceBid = () => {
         if (!canBid || isSold) return;
@@ -441,9 +443,9 @@ export default function Auction({ userData, onEnd }) {
                             <p>Final Bid to match: <span style={{ fontWeight: 800, color: '#10b981' }}>₹{auctionState.currentBid.toFixed(2)} Cr</span></p>
                         </div>
 
-                        {userData.team === auctionState.rtmTeam ? (
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', alignItems: 'stretch' }}>
-                                {myRtms > 0 && myPurse >= auctionState.currentBid && mySquadSize < 25 && !(isPlayerOverseas && myOverseasCount >= 8) ? (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', alignItems: 'stretch' }}>
+                            {actualMyTeam === auctionState.rtmTeam ? (
+                                myRtms > 0 && myPurse >= auctionState.currentBid && mySquadSize < 25 && !(isPlayerOverseas && myOverseasCount >= 8) ? (
                                     <button className="btn-solid-green" onClick={handleRtmAccept} style={{ flex: 1, padding: '0.8rem', fontSize: '1.1rem', fontWeight: 800 }}>USE RTM</button>
                                 ) : (
                                     <button className="btn-solid-green" disabled style={{ flex: 1, padding: '0.8rem', fontSize: '1.1rem', fontWeight: 800, opacity: 0.5, cursor: 'not-allowed', background: '#991b1b' }}>
@@ -453,11 +455,20 @@ export default function Auction({ userData, onEnd }) {
                                                     'OVERSEAS LIMIT REACHED'
                                         }
                                     </button>
-                                )}
+                                )
+                            ) : (
+                                <button className="btn-solid-green" disabled style={{ flex: 1, padding: '0.8rem', fontSize: '1.1rem', fontWeight: 800, opacity: 0.5, cursor: 'not-allowed', background: '#4b5563' }}>USE RTM</button>
+                            )}
+
+                            {actualMyTeam === auctionState.rtmTeam ? (
                                 <button className="btn-solid-red" onClick={handleRtmDecline} style={{ flex: 1, padding: '0.8rem', fontSize: '1.1rem', fontWeight: 800 }}>DECLINE</button>
-                            </div>
-                        ) : (
-                            <div style={{ color: '#aaa', fontStyle: 'italic', background: 'rgba(0,0,0,0.3)', padding: '1rem', borderRadius: '8px' }}>
+                            ) : (
+                                <button className="btn-solid-red" disabled style={{ flex: 1, padding: '0.8rem', fontSize: '1.1rem', fontWeight: 800, opacity: 0.5, cursor: 'not-allowed', background: '#4b5563' }}>DECLINE</button>
+                            )}
+                        </div>
+
+                        {actualMyTeam !== auctionState.rtmTeam && (
+                            <div style={{ marginTop: '1rem', color: '#aaa', fontStyle: 'italic', fontSize: '0.9rem', background: 'rgba(0,0,0,0.3)', padding: '0.75rem', borderRadius: '8px' }}>
                                 Waiting for <strong style={{ color: '#fff' }}>{auctionState.rtmTeam}</strong> to make a decision... <span style={{ color: '#D4AF37', fontWeight: 800 }}>({auctionState.timer}s)</span>
                             </div>
                         )}
