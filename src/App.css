@@ -1332,16 +1332,17 @@
     transform: translate3d(4px, 0, 0);
   }
 }
+
 /* Mobile Responsiveness Enhancements */
 @media (max-width: 768px) {
   .hero-title {
     font-size: 2.2rem;
   }
-  
+
   .interactive-card {
     padding: 1.5rem;
   }
-  
+
   .team-grid {
     justify-content: center;
   }
@@ -1374,7 +1375,8 @@
     border: 2px solid #55e6d9 !important;
   }
 
-  .bid-box.skewed.left, .bid-box.skewed.right {
+  .bid-box.skewed.left,
+  .bid-box.skewed.right {
     transform: none;
     padding: 0.5rem;
     border: 2px solid #55e6d9 !important;
@@ -1383,7 +1385,8 @@
     margin: 0 0.25rem;
   }
 
-  .bid-box.skewed.left > div, .bid-box.skewed.right > div {
+  .bid-box.skewed.left>div,
+  .bid-box.skewed.right>div {
     transform: none;
   }
 
@@ -1408,7 +1411,7 @@
     font-size: 2.5rem;
     padding: 0.5rem 1rem;
   }
-  
+
   .player-details-strip {
     font-size: 0.7rem;
     padding: 0.4rem;
@@ -1440,11 +1443,66 @@
     align-items: stretch;
     gap: 1rem;
   }
-  
+
   .room-header .flex.items-center {
     justify-content: space-between;
   }
 }
 
+@keyframes slide-to-board {
+  0% {
+    top: 30%;
+    left: 50%;
+    transform: translate(-50%, -50%) scale(1.5);
+    opacity: 0;
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.8);
+  }
 
+  10% {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1.6);
+  }
 
+  70% {
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%) scale(1);
+    opacity: 1;
+  }
+
+  100% {
+    top: 80%;
+    left: 50%;
+    transform: translate(-50%, 50px) scale(0.8);
+    opacity: 0;
+  }
+}
+
+.animating-plate-overlay {
+  position: fixed;
+  z-index: 9999;
+  pointer-events: none;
+  animation: slide-to-board 1.5s cubic-bezier(0.25, 1, 0.5, 1) forwards;
+  /* Additional delay so it happens after the hammer strike */
+  animation-delay: 0.5s;
+  opacity: 0;
+}
+
+@keyframes highlight-recently-sold {
+  0% {
+    box-shadow: 0 0 25px #fff, 0 0 40px #FFD700;
+  }
+
+  50% {
+    box-shadow: 0 0 10px rgba(255, 255, 255, 0.8), 0 0 20px rgba(255, 215, 0, 0.6);
+  }
+
+  100% {
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.4);
+  }
+}
+
+.newly-sold-highlight {
+  animation: highlight-recently-sold 2s ease-out infinite;
+  border-color: #fff !important;
+}

@@ -281,8 +281,41 @@ export default function Auction({ userData, onEnd }) {
         });
     };
 
+    // Auto-switch to board tab when player is sold so the sliding animation resolves visibly
+    useEffect(() => {
+        if (auctionState.isSold && buyingTeam !== 'UNSOLD') {
+            setActiveTab('board');
+        }
+    }, [auctionState.isSold, buyingTeam]);
+
     return (
         <div className="center-panel">
+            {isSold && buyingTeam !== 'UNSOLD' && (
+                <div className="animating-plate-overlay">
+                    <div style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        background: 'linear-gradient(90deg, #E5C370 0%, #FFF5C3 50%, #E5C370 100%)',
+                        borderRadius: '4px',
+                        padding: '0.25rem 0.5rem',
+                        border: '1px solid #B8860B',
+                        width: '280px',
+                        color: '#1A1A1A',
+                        fontWeight: 900
+                    }}>
+                        <div style={{ fontSize: '0.65rem', width: '25px', color: '#555' }}>
+                            {String(activePlayer.id).padStart(3, '0')}
+                        </div>
+                        <div style={{ flex: 1, textAlign: 'center', fontSize: '0.75rem', letterSpacing: '0.5px', textTransform: 'uppercase' }}>
+                            {`${activePlayer.firstName} ${activePlayer.lastName}`}
+                        </div>
+                        <div style={{ width: '16px', height: '16px', flexShrink: 0 }}>
+                            <img src={IPL_LOGOS[buyingTeam]} alt={buyingTeam} style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+                        </div>
+                    </div>
+                </div>
+            )}
+
             {/* Player Card */}
             <div className={`auction-card mb-4 animate-fade-in ${isSold ? 'shake' : ''}`} style={{ padding: 0, overflow: 'hidden' }}>
                 <div className="timer-progress-bar" style={{ width: `${Math.min(100, (auctionState.timer / roomTimerSetting) * 100)}%` }}></div>
@@ -515,6 +548,7 @@ export default function Auction({ userData, onEnd }) {
                                                                     ref={provided.innerRef}
                                                                     {...provided.draggableProps}
                                                                     {...provided.dragHandleProps}
+                                                                    className={isSold && player.id === activePlayer.id ? 'newly-sold-highlight' : ''}
                                                                     style={{
                                                                         ...provided.draggableProps.style,
                                                                         display: 'flex',
@@ -575,6 +609,7 @@ export default function Auction({ userData, onEnd }) {
                                                                                 ref={provided.innerRef}
                                                                                 {...provided.draggableProps}
                                                                                 {...provided.dragHandleProps}
+                                                                                className={isSold && player.id === activePlayer.id ? 'newly-sold-highlight' : ''}
                                                                                 style={{
                                                                                     ...provided.draggableProps.style,
                                                                                     display: 'flex',
