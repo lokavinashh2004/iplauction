@@ -153,7 +153,10 @@ export default function Auction({ userData, onEnd }) {
                         currentBidTeam: null,
                         timer: defaultTimer,
                         isSold: false,
-                        soldTo: null
+                        soldTo: null,
+                        isRtmPhase: false,
+                        isRtmUsedThisPlayer: false,
+                        rtmTeam: null
                     });
                 }
             }
@@ -178,13 +181,38 @@ export default function Auction({ userData, onEnd }) {
         if (!isHost || auctionState.isSold || isPaused || auctionState.isAuctionOver) return;
 
         if (auctionState.timer <= 0) {
+            const originalBuyer = auctionState.currentBidTeam || 'UNSOLD';
+            const currentPlayer = PLAYERS_DATA[auctionState.currentPlayerIndex] || PLAYERS_DATA[0];
+            const prevTeamName = currentPlayer?.previousTeam;
+            const isPrevTeamActive = Object.values(roomUsers).some(u => u.team === prevTeamName);
+
+            if (!auctionState.isRtmPhase && !auctionState.isRtmUsedThisPlayer && originalBuyer !== 'UNSOLD' && isPrevTeamActive && prevTeamName && prevTeamName !== originalBuyer) {
+                const prevTeamUser = Object.keys(roomUsers).find(name => roomUsers[name].team === prevTeamName);
+                const rtmCount = prevTeamUser && roomUsers[prevTeamUser].rtms !== undefined ? roomUsers[prevTeamUser].rtms : 3;
+                const prevPurse = prevTeamUser ? (roomUsers[prevTeamUser].purse !== undefined ? roomUsers[prevTeamUser].purse : 100.0) : 0;
+                const prevSquadSize = allSquads[prevTeamName] ? allSquads[prevTeamName].length : 0;
+                const prevOverseasCount = allSquads[prevTeamName] ? allSquads[prevTeamName].filter(p => p.country && p.country !== 'IND').length : 0;
+                const isPlayerOverseas = currentPlayer.country && currentPlayer.country !== 'IND';
+
+                const canPrevTeamMatch = rtmCount > 0 && prevPurse >= auctionState.currentBid && prevSquadSize < 25 && !(isPlayerOverseas && prevOverseasCount >= 8);
+
+                if (canPrevTeamMatch) {
+                    set(ref(db, `rooms/${userData.roomId}/auctionState`), {
+                        ...auctionState,
+                        isRtmPhase: true,
+                        rtmTeam: prevTeamName,
+                        timer: 15 // 15 seconds for RTM decision
+                    });
+                    return;
+                }
+            }
+
             const finalBuyer = auctionState.currentBidTeam || 'UNSOLD';
 
             // Mark Sold State
-            const updatedState = { ...auctionState, isSold: true, soldTo: finalBuyer, timer: 0 };
+            const updatedState = { ...auctionState, isSold: true, soldTo: finalBuyer, timer: 0, isRtmPhase: false };
             set(ref(db, `rooms/${userData.roomId}/auctionState`), updatedState);
 
-            const currentPlayer = PLAYERS_DATA[auctionState.currentPlayerIndex] || PLAYERS_DATA[0];
             const playerSnapshot = {
                 id: currentPlayer.id,
                 name: `${currentPlayer.firstName} ${currentPlayer.lastName}`,
@@ -200,9 +228,13 @@ export default function Auction({ userData, onEnd }) {
                 if (buyerName) {
                     const currentPurse = roomUsers[buyerName]?.purse !== undefined ? roomUsers[buyerName].purse : 100.0;
                     const newPurse = currentPurse - auctionState.currentBid;
+                    const rtmCount = roomUsers[buyerName]?.rtms !== undefined ? roomUsers[buyerName].rtms : 3;
 
                     // Deduct
                     set(ref(db, `rooms/${userData.roomId}/users/${buyerName}/purse`), newPurse);
+                    if (auctionState.isRtmUsedThisPlayer && finalBuyer === prevTeamName) {
+                        set(ref(db, `rooms/${userData.roomId}/users/${buyerName}/rtms`), Math.max(0, rtmCount - 1));
+                    }
 
                     // Add to Squad
                     get(ref(db, `rooms/${userData.roomId}/squads/${finalBuyer}`)).then(snap => {
@@ -253,7 +285,10 @@ export default function Auction({ userData, onEnd }) {
                             currentBidTeam: null,
                             timer: currentTimerVal,
                             isSold: false,
-                            soldTo: null
+                            soldTo: null,
+                            isRtmPhase: false,
+                            isRtmUsedThisPlayer: false,
+                            rtmTeam: null
                         });
                     });
                 }
@@ -290,6 +325,7 @@ export default function Auction({ userData, onEnd }) {
     const teamColor = TEAM_COLORS[buyingTeam] || '#666';
 
     const myPurse = roomUsers[userData.name]?.purse !== undefined ? roomUsers[userData.name].purse : 100.00;
+    const myRtms = roomUsers[userData.name]?.rtms !== undefined ? roomUsers[userData.name].rtms : 3;
     const nextBidAmount = auctionState.currentBid ? auctionState.currentBid + 0.5 : parseFloat(activePlayer.basePrice);
 
     // Check if the current user represents a team, and if that team is currently leading the bid
@@ -304,8 +340,8 @@ export default function Auction({ userData, onEnd }) {
     const isPlayerOverseas = activePlayer.country && activePlayer.country !== 'IND';
     const isOverseasLimitReached = myOverseasCount >= 8 && isPlayerOverseas;
 
-    // The user can only bid if they are a team, they aren't currently leading, they have enough purse, the game isn't paused, the squad isn't full, and the overseas limit isn't reached
-    const canBid = Boolean(userData.team && !isMyTeamLeading && nextBidAmount <= myPurse && !isPaused && !isSquadFull && !isOverseasLimitReached);
+    // The user can only bid if they are a team, they aren't currently leading, they have enough purse, the game isn't paused, the squad isn't full, and the overseas limit isn't reached, and it isn't RTM phase
+    const canBid = Boolean(userData.team && !isMyTeamLeading && nextBidAmount <= myPurse && !isPaused && !isSquadFull && !isOverseasLimitReached && !auctionState.isRtmPhase);
 
     const handlePlaceBid = () => {
         if (!canBid || isSold) return;
@@ -321,6 +357,29 @@ export default function Auction({ userData, onEnd }) {
     const getTeamPurse = (teamName) => {
         const teamUser = Object.keys(roomUsers).find(name => roomUsers[name].team === teamName);
         return teamUser && roomUsers[teamUser].purse !== undefined ? roomUsers[teamUser].purse : 100.00;
+    };
+
+    const getTeamRtms = (teamName) => {
+        const teamUser = Object.keys(roomUsers).find(name => roomUsers[name].team === teamName);
+        return teamUser && roomUsers[teamUser].rtms !== undefined ? roomUsers[teamUser].rtms : 3;
+    };
+
+    const handleRtmAccept = () => {
+        set(ref(db, `rooms/${userData.roomId}/auctionState`), {
+            ...auctionState,
+            currentBidTeam: auctionState.rtmTeam,
+            isRtmPhase: false,
+            isRtmUsedThisPlayer: true,
+            timer: 0 // Ends phase and triggers the sale correctly to the new leading team
+        });
+    };
+
+    const handleRtmDecline = () => {
+        set(ref(db, `rooms/${userData.roomId}/auctionState`), {
+            ...auctionState,
+            isRtmPhase: false,
+            timer: 0 // Triggers normal sale to the original bidder
+        });
     };
 
     // Auto-switch to board tab when player is sold so the sliding animation resolves visibly
@@ -371,7 +430,31 @@ export default function Auction({ userData, onEnd }) {
     }
 
     return (
-        <div className="center-panel">
+        <div className="center-panel" style={{ position: 'relative' }}>
+            {auctionState.isRtmPhase && (
+                <div style={{ position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', background: 'rgba(0,0,0,0.85)', zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <div style={{ background: '#111', border: `3px solid ${TEAM_COLORS[auctionState.rtmTeam] || '#B8860B'}`, borderRadius: '12px', padding: '2rem', textAlign: 'center', maxWidth: '400px', boxShadow: '0 10px 30px rgba(0,0,0,0.5)' }}>
+                        <h2 style={{ color: '#D4AF37', marginBottom: '1rem', fontWeight: 900, fontSize: '1.5rem', letterSpacing: '1px' }}>RIGHT TO MATCH AVAILABLE</h2>
+                        <div style={{ marginBottom: '1.5rem', color: '#fff', fontSize: '1.1rem', background: 'rgba(255,255,255,0.05)', padding: '1rem', borderRadius: '8px' }}>
+                            <p style={{ marginBottom: '0.5rem' }}>Player: <span style={{ fontWeight: 800 }}>{`${activePlayer.firstName} ${activePlayer.lastName}`}</span></p>
+                            <p style={{ marginBottom: '0.5rem' }}>Previous Team: <span style={{ fontWeight: 800, color: TEAM_COLORS[auctionState.rtmTeam] || '#fff' }}>{auctionState.rtmTeam}</span></p>
+                            <p>Final Bid to match: <span style={{ fontWeight: 800, color: '#10b981' }}>₹{auctionState.currentBid.toFixed(2)} Cr</span></p>
+                        </div>
+
+                        {userData.team === auctionState.rtmTeam ? (
+                            <div style={{ display: 'flex', gap: '1rem', justifyContent: 'center' }}>
+                                <button className="btn-solid-green" onClick={handleRtmAccept} style={{ flex: 1, padding: '0.8rem', fontSize: '1.1rem', fontWeight: 800 }}>USE RTM</button>
+                                <button className="btn-solid-red" onClick={handleRtmDecline} style={{ flex: 1, padding: '0.8rem', fontSize: '1.1rem', fontWeight: 800 }}>DECLINE</button>
+                            </div>
+                        ) : (
+                            <div style={{ color: '#aaa', fontStyle: 'italic', background: 'rgba(0,0,0,0.3)', padding: '1rem', borderRadius: '8px' }}>
+                                Waiting for <strong style={{ color: '#fff' }}>{auctionState.rtmTeam}</strong> to make a decision... <span style={{ color: '#D4AF37', fontWeight: 800 }}>({auctionState.timer}s)</span>
+                            </div>
+                        )}
+                    </div>
+                </div>
+            )}
+
             {isSold && buyingTeam !== 'UNSOLD' && (
                 <div className="animating-plate-overlay">
                     <div style={{
@@ -631,6 +714,8 @@ export default function Auction({ userData, onEnd }) {
                                                 <span style={{ color: mySquadSize >= 25 ? '#ef4444' : '#aaa', fontWeight: 600 }}>({mySquadSize}/25)</span>
                                                 <span style={{ color: '#555' }}>|</span>
                                                 <span style={{ color: myOverseasCount >= 8 ? '#ef4444' : '#aaa', fontWeight: 600 }}>OS: {myOverseasCount}/8</span>
+                                                <span style={{ color: '#555' }}>|</span>
+                                                <span style={{ color: '#aaa', fontWeight: 600 }}>RTM: <span style={{ color: myRtms > 0 ? '#D4AF37' : '#ef4444', fontWeight: 800 }}>{myRtms}</span></span>
                                             </div>
                                         )}
                                     </div>
@@ -704,6 +789,7 @@ export default function Auction({ userData, onEnd }) {
                                                         <span style={{ fontSize: '0.75rem', fontWeight: 800, color: TEAM_COLORS[teamName] || '#fff' }}>{teamName}</span>
                                                         <span style={{ marginLeft: '0.5rem', fontSize: '0.65rem', color: squad.length >= 25 ? '#ef4444' : '#888', fontWeight: 600 }}>({squad.length}/25)</span>
                                                         <span style={{ marginLeft: '0.5rem', fontSize: '0.65rem', color: squad.filter(p => p.country && p.country !== 'IND').length >= 8 ? '#ef4444' : '#888', fontWeight: 600 }}>OS: {squad.filter(p => p.country && p.country !== 'IND').length}/8</span>
+                                                        <span style={{ marginLeft: '0.5rem', fontSize: '0.65rem', color: getTeamRtms(teamName) === 0 ? '#ef4444' : '#D4AF37', fontWeight: 600 }}>RTM: {getTeamRtms(teamName)}</span>
                                                         <div style={{ marginLeft: 'auto', fontSize: '0.7rem', fontWeight: 800, color: '#10b981' }}>
                                                             <AnimatedPurse amount={getTeamPurse(teamName)} />
                                                         </div>
