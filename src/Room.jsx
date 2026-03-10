@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { db } from './firebase';
-import { ref, onValue } from 'firebase/database';
+import { ref, onValue, set } from 'firebase/database';
 
 const IPL_LOGOS = {
     MI: 'https://upload.wikimedia.org/wikipedia/en/thumb/c/cd/Mumbai_Indians_Logo.svg/200px-Mumbai_Indians_Logo.svg.png',
@@ -15,17 +15,30 @@ const IPL_LOGOS = {
     LSG: 'https://upload.wikimedia.org/wikipedia/en/thumb/a/a9/Lucknow_Super_Giants_IPL_Logo.svg/200px-Lucknow_Super_Giants_IPL_Logo.svg.png'
 };
 
-export default function Room({ userData }) {
+export default function Room({ userData, setUserData }) {
     const [activeTab, setActiveTab] = useState('settings');
-    const [timer, setTimer] = useState('10s');
+
+    const handleTeamSelect = (t) => {
+        if (!setUserData) return;
+        const isTaken = Object.values(users).some(u => u.team === t);
+        if (isTaken && userData.team !== t) return;
+
+        set(ref(db, `rooms/${userData.roomId}/users/${userData.name}/team`), t);
+        setUserData({ ...userData, team: t });
+    };
+    const [timer, setTimer] = useState(15);
     const [users, setUsers] = useState({});
 
     useEffect(() => {
         if (!userData.roomId) return;
-        const usersRef = ref(db, `rooms/${userData.roomId}/users`);
-        const unsubscribe = onValue(usersRef, (snapshot) => {
+        const roomRef = ref(db, `rooms/${userData.roomId}`);
+        const unsubscribe = onValue(roomRef, (snapshot) => {
             if (snapshot.exists()) {
-                setUsers(snapshot.val());
+                const data = snapshot.val();
+                setUsers(data.users || {});
+                if (data.settings && data.settings.timer) {
+                    setTimer(data.settings.timer);
+                }
             } else {
                 setUsers({});
             }
@@ -89,11 +102,17 @@ export default function Room({ userData }) {
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
                         <span className="card-title">Select Your Team</span>
                     </div>
-                    <div className="team-badge-small" style={{ backgroundColor: 'white', padding: '0.1rem', borderRadius: '4px' }}>
-                        <span className={`team-btn-mini ${userData.team ? userData.team.toLowerCase() : 'mi'}`} style={{ backgroundColor: 'white', overflow: 'hidden' }}>
-                            <img src={IPL_LOGOS[userData.team || 'MI']} alt={userData.team || 'MI'} style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
-                        </span>
-                        <span style={{ color: '#111827', padding: '0 0.5rem' }}>{userData.team || 'MI'}</span>
+                    <div className="team-badge-small" style={{ backgroundColor: userData.team ? 'white' : 'transparent', padding: '0.1rem', borderRadius: '4px' }}>
+                        {userData.team ? (
+                            <>
+                                <span className={`team-btn-mini ${userData.team.toLowerCase()}`} style={{ backgroundColor: 'white', overflow: 'hidden' }}>
+                                    <img src={IPL_LOGOS[userData.team]} alt={userData.team} style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+                                </span>
+                                <span style={{ color: '#111827', padding: '0 0.5rem' }}>{userData.team}</span>
+                            </>
+                        ) : (
+                            <span style={{ color: '#ef4444', padding: '0 0.5rem', fontWeight: 600 }}>Click below to select a team</span>
+                        )}
                     </div>
                 </div>
                 <div className="team-rect-grid">
@@ -101,9 +120,15 @@ export default function Room({ userData }) {
                         const userEntry = Object.entries(users).find(([n, u]) => u.team === t);
                         const isSelected = !!userEntry;
                         const userName = isSelected ? userEntry[0] : '';
+                        const isMyTeam = userData.team === t;
 
                         return (
-                            <div key={t} className={`team-rect ${isSelected ? 'selected' : ''}`}>
+                            <div
+                                key={t}
+                                className={`team-rect ${isSelected ? 'selected' : ''}`}
+                                onClick={() => handleTeamSelect(t)}
+                                style={{ cursor: isSelected && !isMyTeam ? 'not-allowed' : 'pointer', opacity: isSelected && !isMyTeam ? 0.7 : 1 }}
+                            >
                                 <div className={`team-circle ${t.toLowerCase()}`} title={t} style={{ backgroundColor: 'white', overflow: 'hidden', padding: '0.15rem' }}>
                                     <img src={IPL_LOGOS[t]} alt={t} style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
                                 </div>
@@ -149,21 +174,24 @@ export default function Room({ userData }) {
                     {activeTab === 'settings' && (
                         <div className="settings-panel">
                             <div className="settings-row flex-col-start">
-                                <div className="flex items-center" style={{ gap: '0.5rem', color: '#fff', fontWeight: 600 }}>
-                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#a855f7" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
-                                    Bid Timer
+                                <div className="flex justify-between w-full items-center">
+                                    <div className="flex items-center" style={{ gap: '0.5rem', color: '#fff', fontWeight: 600 }}>
+                                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#a855f7" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+                                        Bid Timer
+                                    </div>
+                                    <span style={{ color: '#a855f7', fontWeight: 700 }}>{timer}s</span>
                                 </div>
                                 <div style={{ fontSize: '0.75rem', color: 'var(--text-tertiary)', margin: '0.25rem 0 0.75rem' }}>
                                     Time allowed for each player auction
                                 </div>
                                 <div className="timer-grid">
-                                    {['5s', '10s', '15s', '20s', '25s'].map(t => (
+                                    {[5, 10, 15, 20, 25].map(t => (
                                         <button
                                             key={t}
                                             className={`timer-btn ${timer === t ? 'active' : ''}`}
-                                            onClick={() => setTimer(t)}
+                                            onClick={() => set(ref(db, `rooms/${userData.roomId}/settings/timer`), t)}
                                         >
-                                            {t}
+                                            {t}s
                                         </button>
                                     ))}
                                 </div>

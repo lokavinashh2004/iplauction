@@ -19,14 +19,15 @@ function App() {
       mode: 'cricket',
       privacy: 'private',
       club: '',
-      roomId: initialRoom
+      roomId: initialRoom,
+      hasJoined: false
     };
   });
 
   const [hostName, setHostName] = useState('');
 
   useEffect(() => {
-    if (!userData.roomId) return;
+    if (!userData.roomId || !userData.hasJoined) return;
     const roomRef = ref(db, `rooms/${userData.roomId}`);
 
     // Maintain a clean active listener, removed `currentPage` dependency to stop websocket reconnects
@@ -35,7 +36,7 @@ function App() {
         setCurrentPage(prev => {
           if (prev !== 'home') {
             setTimeout(() => {
-              setUserData(u => ({ ...u, roomId: '', team: null }));
+              setUserData(u => ({ ...u, roomId: '', team: null, hasJoined: false }));
               window.location.hash = '';
             }, 0);
             return 'home';
@@ -66,7 +67,7 @@ function App() {
     });
 
     return () => unsubscribe();
-  }, [userData.roomId, userData.name]);
+  }, [userData.roomId, userData.name, userData.hasJoined]);
 
   const leaveRoom = async () => {
     if (!userData.roomId || !userData.name) {
@@ -78,7 +79,7 @@ function App() {
     const hostCheck = hostName;
 
     // UI Cleanup
-    setUserData(prev => ({ ...prev, roomId: '', team: null }));
+    setUserData(prev => ({ ...prev, roomId: '', team: null, hasJoined: false }));
     setCurrentPage('home');
     window.location.hash = '';
 
@@ -180,7 +181,7 @@ function App() {
             onJoin={() => setCurrentPage('room')}
           />
         ) : currentPage === 'room' ? (
-          <Room userData={userData} />
+          <Room userData={userData} setUserData={setUserData} />
         ) : (
           <Auction userData={userData} onEnd={() => setCurrentPage('home')} />
         )}

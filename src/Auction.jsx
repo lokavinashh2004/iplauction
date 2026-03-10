@@ -60,6 +60,7 @@ export default function Auction({ userData, onEnd }) {
     const [roomUsers, setRoomUsers] = useState({});
     const [activityLog, setActivityLog] = useState([]);
     const [allSquads, setAllSquads] = useState({});
+    const [roomTimerSetting, setRoomTimerSetting] = useState(15);
 
     // Sync auction state from Firebase
     useEffect(() => {
@@ -92,17 +93,22 @@ export default function Auction({ userData, onEnd }) {
                     setAllSquads({});
                 }
 
+                if (data.settings && data.settings.timer) {
+                    setRoomTimerSetting(data.settings.timer);
+                }
+
                 if (data.auctionState) {
                     setAuctionState(data.auctionState);
                 } else if (hostStatus) {
                     // Initialize the auction state if it's completely missing
                     const initialPlayer = PLAYERS_DATA[0];
+                    const defaultTimer = data.settings?.timer || 15;
                     set(ref(db, `rooms/${userData.roomId}/auctionState`), {
                         activePlayer: initialPlayer,
                         currentPlayerIndex: 0,
                         currentBid: parseFloat(initialPlayer.basePrice),
                         currentBidTeam: null,
-                        timer: 15,
+                        timer: defaultTimer,
                         isSold: false,
                         soldTo: null
                     });
@@ -187,14 +193,18 @@ export default function Auction({ userData, onEnd }) {
             setTimeout(() => {
                 const nextIndex = (auctionState.currentPlayerIndex + 1) % PLAYERS_DATA.length;
                 const nextPlayer = PLAYERS_DATA[nextIndex];
-                set(ref(db, `rooms/${userData.roomId}/auctionState`), {
-                    activePlayer: nextPlayer,
-                    currentPlayerIndex: nextIndex,
-                    currentBid: parseFloat(nextPlayer.basePrice),
-                    currentBidTeam: null,
-                    timer: 15,
-                    isSold: false,
-                    soldTo: null
+
+                get(ref(db, `rooms/${userData.roomId}/settings/timer`)).then(snap => {
+                    const currentTimerVal = snap.val() || 15;
+                    set(ref(db, `rooms/${userData.roomId}/auctionState`), {
+                        activePlayer: nextPlayer,
+                        currentPlayerIndex: nextIndex,
+                        currentBid: parseFloat(nextPlayer.basePrice),
+                        currentBidTeam: null,
+                        timer: currentTimerVal,
+                        isSold: false,
+                        soldTo: null
+                    });
                 });
             }, 3000);
 
@@ -244,7 +254,7 @@ export default function Auction({ userData, onEnd }) {
             ...auctionState,
             currentBid: nextBidAmount,
             currentBidTeam: userData.team,
-            timer: 15 // Reset the auction countdown so teams can respond
+            timer: roomTimerSetting // Reset the auction countdown so teams can respond
         });
     };
 
@@ -252,7 +262,7 @@ export default function Auction({ userData, onEnd }) {
         <div className="center-panel">
             {/* Player Card */}
             <div className={`auction-card mb-4 animate-fade-in ${isSold ? 'shake' : ''}`} style={{ padding: 0, overflow: 'hidden' }}>
-                <div className="timer-progress-bar" style={{ width: `${(auctionState.timer / 15) * 100}%` }}></div>
+                <div className="timer-progress-bar" style={{ width: `${Math.min(100, (auctionState.timer / roomTimerSetting) * 100)}%` }}></div>
 
                 <div className="bid-presentation">
                     <div className={`team-bg-overlay ${isSold && buyingTeam !== 'UNSOLD' ? 'show' : ''}`} style={{ backgroundColor: teamColor }}></div>
@@ -533,14 +543,20 @@ export default function Auction({ userData, onEnd }) {
                                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#a855f7" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
                                         Bid Timer
                                     </div>
-                                    <span style={{ color: '#a855f7', fontWeight: 700 }}>10s</span>
+                                    <span style={{ color: '#a855f7', fontWeight: 700 }}>{roomTimerSetting}s</span>
                                 </div>
                                 <div style={{ fontSize: '0.75rem', color: 'var(--text-tertiary)', margin: '0.25rem 0 0.75rem' }}>
                                     Time allowed for each bid round
                                 </div>
                                 <div className="timer-grid">
-                                    {['5s', '10s', '15s', '20s', '25s'].map(t => (
-                                        <button key={t} className={`timer-btn ${t === '10s' ? 'active' : ''}`}>{t}</button>
+                                    {[5, 10, 15, 20, 25].map(t => (
+                                        <button
+                                            key={t}
+                                            className={`timer-btn ${roomTimerSetting === t ? 'active' : ''}`}
+                                            onClick={() => set(ref(db, `rooms/${userData.roomId}/settings/timer`), t)}
+                                        >
+                                            {t}s
+                                        </button>
                                     ))}
                                 </div>
                             </div>
