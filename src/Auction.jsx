@@ -726,7 +726,7 @@ export default function Auction({ userData, onEnd }) {
                                     <div style={{ background: '#111', padding: '0.5rem', textAlign: 'center', fontWeight: 800, fontSize: '0.85rem', letterSpacing: '1px', borderBottom: '2px solid #333' }}>
                                         <div style={{ marginBottom: '0.2rem' }}>MY SQUAD</div>
                                         {userData.team && (
-                                            <div style={{ fontSize: '0.7rem', display: 'flex', justifyContent: 'center', gap: '8px', alignItems: 'center' }}>
+                                            <div className="squad-header-stats" style={{ fontSize: '0.7rem', display: 'flex', justifyContent: 'center', gap: '8px', alignItems: 'center' }}>
                                                 <span>
                                                     <span style={{ color: '#aaa', fontWeight: 600 }}>PURSE: </span>
                                                     <span style={{ color: '#10b981', fontWeight: 800 }}><AnimatedPurse amount={myPurse} /></span>

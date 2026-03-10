@@ -1497,7 +1497,7 @@
   }
 }
 
-/* Mobile Responsiveness Enhancements */
+/* ─────────── MOBILE RESPONSIVE ─────────── */
 @media (max-width: 768px) {
   .hero-title {
     font-size: 2.2rem;
@@ -1526,7 +1526,6 @@
     width: 100%;
   }
 
-  /* Flatten the bid boxes on extremely tight screens or adjust padding */
   .bid-box {
     padding: 0.5rem;
   }
@@ -1568,7 +1567,8 @@
 
   .auction-topbar .topbar-content {
     flex-direction: column;
-    gap: 0.75rem;
+    gap: 0.5rem;
+    padding: 0.5rem;
   }
 
   .stamp-sold {
@@ -1576,40 +1576,146 @@
     padding: 0.5rem 1rem;
   }
 
+  /* Player details strip — wrap on mobile */
   .player-details-strip {
-    font-size: 0.7rem;
-    padding: 0.4rem;
-    gap: 0.4rem;
+    font-size: 0.65rem;
+    padding: 0.35rem 0.5rem;
+    gap: 0.3rem;
+    flex-wrap: wrap;
+    justify-content: center;
     width: 100%;
+    overflow: hidden;
+  }
+
+  .player-details-strip span {
+    white-space: nowrap;
   }
 }
 
 @media (max-width: 480px) {
-  .team-rect-grid {
-    grid-template-columns: repeat(3, 1fr);
+
+  /* ── Layout ── */
+  .main-content {
+    padding: 0.5rem 0.25rem 5rem;
+    gap: 0;
   }
 
-  .main-content {
-    padding: 1rem 0.5rem 6rem;
+  .center-panel {
+    width: 100%;
+    max-width: 100%;
+    padding: 0;
   }
 
   .interactive-card {
     padding: 1rem;
   }
 
-  .btn-bid {
-    font-size: 1rem;
-    padding: 0.75rem;
-  }
-
+  /* ── Room header ── */
   .room-header {
-    flex-direction: column;
-    align-items: stretch;
-    gap: 1rem;
+    padding: 0.5rem 0.75rem;
+    gap: 0.5rem;
+    flex-wrap: wrap;
   }
 
   .room-header .flex.items-center {
     justify-content: space-between;
+  }
+
+  /* ── Team grid in room lobby ── */
+  .team-rect-grid {
+    grid-template-columns: repeat(5, 1fr);
+    gap: 0.35rem;
+  }
+
+  .team-rect {
+    padding: 0.6rem 0;
+  }
+
+  .team-circle {
+    width: 2.2rem !important;
+    height: 2.2rem !important;
+  }
+
+  /* ── Invite row in room ── */
+  .invite-row {
+    flex-wrap: wrap;
+    gap: 0.5rem;
+  }
+
+  .invite-input {
+    min-width: 0;
+    flex: 1 1 100%;
+  }
+
+  /* ── Bid row (timer + purse + bid button) ── */
+  .bid-row-mobile {
+    flex-wrap: wrap;
+    gap: 0.4rem;
+  }
+
+  .btn-bid {
+    font-size: 0.9rem;
+    padding: 0.65rem 1rem;
+    flex: 1;
+    min-width: 120px;
+  }
+
+  /* ── Squad board: stack MY SQUAD / OTHER SQUADS vertically ── */
+  .squad-board-panel {
+    flex-direction: column !important;
+    max-height: none !important;
+    gap: 0.5rem !important;
+  }
+
+  /* ── Purse stats header: wrap cleanly ── */
+  .squad-header-stats {
+    flex-wrap: wrap;
+    gap: 4px !important;
+    font-size: 0.65rem !important;
+  }
+
+  /* ── Activity / Squad / Settings tabs ── */
+  .auction-tabs {
+    font-size: 0.7rem;
+  }
+
+  .auction-tab {
+    padding: 0.5rem 0.25rem;
+    gap: 0.2rem;
+    font-size: 0.7rem;
+  }
+
+  /* ── Timer buttons in settings ── */
+  .timer-grid {
+    grid-template-columns: repeat(5, 1fr);
+    gap: 0.3rem;
+  }
+
+  .timer-btn {
+    padding: 0.4rem 0.1rem;
+    font-size: 0.75rem;
+  }
+
+  /* ── Playing as banner ── */
+  .playing-as-banner {
+    font-size: 0.8rem;
+    padding: 0.5rem 0.75rem;
+  }
+
+  /* ── Auction topbar ── */
+  .auction-topbar {
+    padding: 0.4rem 0.5rem;
+  }
+
+  .topbar-content {
+    flex-wrap: wrap;
+    gap: 0.4rem;
+  }
+
+  .btn-outline-yellow,
+  .btn-outline-red {
+    padding: 0.35rem 0.6rem;
+    font-size: 0.75rem;
   }
 }
 
