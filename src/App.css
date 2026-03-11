@@ -2087,3 +2087,247 @@
     transform: translateY(0) scale(1);
   }
 }
+
+/* ── Cinematic Set Intro Overlay ── */
+
+/* Keyframes */
+@keyframes set-bg-fade {
+  0% {
+    opacity: 0;
+  }
+
+  10% {
+    opacity: 1;
+  }
+
+  80% {
+    opacity: 1;
+  }
+
+  100% {
+    opacity: 0;
+  }
+}
+
+@keyframes set-streak-sweep {
+  0% {
+    transform: translateX(-110%);
+    opacity: 0;
+  }
+
+  15% {
+    opacity: 1;
+  }
+
+  70% {
+    opacity: 1;
+  }
+
+  100% {
+    transform: translateX(110%);
+    opacity: 0;
+  }
+}
+
+@keyframes set-glow-breathe {
+  0% {
+    transform: translate(-50%, -50%) scale(0.9);
+    opacity: 0.4;
+  }
+
+  50% {
+    transform: translate(-50%, -50%) scale(1.1);
+    opacity: 0.9;
+  }
+
+  100% {
+    transform: translate(-50%, -50%) scale(0.9);
+    opacity: 0.4;
+  }
+}
+
+@keyframes set-label-in {
+  0% {
+    opacity: 0;
+    transform: translateY(-14px);
+    letter-spacing: 10px;
+  }
+
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+    letter-spacing: 6px;
+  }
+}
+
+@keyframes set-divider-expand {
+  0% {
+    width: 0;
+    opacity: 0;
+  }
+
+  100% {
+    width: 280px;
+    opacity: 1;
+  }
+}
+
+@keyframes set-main-text-in {
+  0% {
+    opacity: 0;
+    transform: scale(0.7) translateY(16px);
+  }
+
+  60% {
+    opacity: 1;
+    transform: scale(1.03) translateY(-4px);
+  }
+
+  100% {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+@keyframes set-subtitle-in {
+  0% {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Layout */
+.set-intro-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 10000;
+  overflow: hidden;
+  pointer-events: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.set-intro-bg {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(ellipse at 50% 44%, #0b1120 0%, #000 80%);
+  animation: set-bg-fade 4s ease forwards;
+}
+
+.set-intro-streak-main {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(105deg,
+      transparent 0%,
+      transparent 30%,
+      rgba(212, 175, 55, 0.55) 50%,
+      transparent 70%,
+      transparent 100%);
+  animation: set-streak-sweep 1.4s 0.15s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+.set-intro-radial-glow {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 640px;
+  height: 640px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(212, 175, 55, 0.18) 0%, transparent 68%);
+  animation: set-glow-breathe 2s 0.5s ease-in-out infinite;
+}
+
+.set-intro-centre {
+  position: relative;
+  z-index: 10;
+  text-align: center;
+  padding: 0 1rem;
+}
+
+/* "NEXT SET" chip */
+.set-intro-label {
+  font-family: 'Inter', sans-serif;
+  font-size: 0.75rem;
+  font-weight: 800;
+  letter-spacing: 6px;
+  color: #D4AF37;
+  text-transform: uppercase;
+  margin-bottom: 1.25rem;
+  opacity: 0;
+  animation: set-label-in 0.55s 0.55s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+/* Gold divider bars */
+.set-intro-divider {
+  height: 2px;
+  width: 0;
+  margin: 0 auto 1.5rem;
+  background: linear-gradient(90deg, transparent, #D4AF37 40%, #D4AF37 60%, transparent);
+  animation: set-divider-expand 0.55s 0.65s ease-out forwards;
+}
+
+.set-intro-divider-bottom {
+  margin: 1.5rem auto 0;
+  animation-delay: 0.85s;
+}
+
+/* "BA1 – Capped Batters" row */
+.set-intro-code-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  margin-bottom: 1.25rem;
+  opacity: 0;
+  animation: set-main-text-in 0.7s 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.set-intro-code {
+  font-family: 'Inter', sans-serif;
+  font-size: clamp(3rem, 10vw, 6.5rem);
+  font-weight: 900;
+  color: #ffffff;
+  letter-spacing: 3px;
+  text-transform: uppercase;
+  text-shadow:
+    0 0 40px rgba(212, 175, 55, 0.6),
+    0 0 80px rgba(212, 175, 55, 0.25);
+  line-height: 1;
+}
+
+.set-intro-dash {
+  font-size: clamp(2rem, 6vw, 4rem);
+  color: rgba(212, 175, 55, 0.6);
+  font-weight: 300;
+  line-height: 1;
+}
+
+.set-intro-name {
+  font-family: 'Inter', sans-serif;
+  font-size: clamp(1.5rem, 5vw, 3rem);
+  font-weight: 700;
+  color: #D4AF37;
+  letter-spacing: 1px;
+  line-height: 1;
+}
+
+/* "Preparing next group…" subtitle */
+.set-intro-subtitle {
+  font-family: 'Inter', sans-serif;
+  font-size: 0.9rem;
+  color: rgba(255, 255, 255, 0.45);
+  letter-spacing: 0.5px;
+  margin-top: 0.5rem;
+  opacity: 0;
+  animation: set-subtitle-in 0.45s 1.3s ease-out forwards;
+}

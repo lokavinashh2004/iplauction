@@ -9,6 +9,15 @@ import Auction from './Auction';
 function App() {
   const [currentPage, setCurrentPage] = useState('home');
   const [userData, setUserData] = useState(() => {
+    const savedData = sessionStorage.getItem('auctionUserData');
+    if (savedData) {
+      try {
+        return JSON.parse(savedData);
+      } catch (e) {
+        console.error('Failed to parse saved user data', e);
+      }
+    }
+
     let initialRoom = '';
     if (window.location.hash.startsWith('#room=')) {
       initialRoom = window.location.hash.split('=')[1];
@@ -23,6 +32,17 @@ function App() {
       hasJoined: false
     };
   });
+
+  // Save userData to sessionStorage whenever it updates, to persist it across immediate reloads
+  useEffect(() => {
+    if (userData.hasJoined && userData.name && userData.roomId) {
+      sessionStorage.setItem('auctionUserData', JSON.stringify(userData));
+      // Auto-update URL hash so the user can easily copy/paste the link
+      window.location.hash = `#room=${userData.roomId}`;
+    } else if (!userData.hasJoined) {
+      sessionStorage.removeItem('auctionUserData');
+    }
+  }, [userData]);
 
   const [hostName, setHostName] = useState('');
   const [isPaused, setIsPaused] = useState(false);
@@ -113,17 +133,6 @@ function App() {
       }
     } catch (e) { console.error('Error leaving room', e); }
   };
-
-  useEffect(() => {
-    const handleUnload = () => {
-      if (userData.roomId && userData.name) {
-        // Browsers won't reliably await this, so it perfectly compliments our onDisconnect() fallback
-        leaveRoom();
-      }
-    };
-    window.addEventListener('beforeunload', handleUnload);
-    return () => window.removeEventListener('beforeunload', handleUnload);
-  }, [userData, hostName]);
 
   const isHost = !!(userData.name && hostName === userData.name);
 

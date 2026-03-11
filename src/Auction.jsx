@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { db } from './firebase';
 import { ref, onValue, set, get } from 'firebase/database';
-import { PLAYERS_DATA } from './Players/playersData';
+import { playersData as RAW_PLAYERS_DATA } from './Players/playersData';
 import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd';
 
 const TEAM_COLORS = {
@@ -43,6 +43,64 @@ const IPL_LOGOS = {
     LSG: '/LSG.png'
 };
 
+// Strict IPL auction set progression order
+const SET_ORDER = [
+    'M1', 'M2',
+    'BA1', 'AL1', 'WK1', 'FA1', 'SP1',
+    'UBA1', 'UAL1', 'UWK1', 'UFA1', 'USP1',
+    'BA2', 'AL2', 'WK2', 'FA2', 'SP2',
+    'UBA2', 'UAL2', 'UWK2', 'UFA2', 'USP2',
+    'BA3', 'AL3', 'WK3', 'FA3', 'SP3',
+    'UBA3', 'UAL3', 'UWK3', 'UFA3', 'USP3',
+    'BA4', 'AL4', 'WK4', 'FA4', 'SP4',
+    'UBA4', 'UAL4', 'UWK4', 'UFA4', 'USP4',
+    'BA5', 'FA5', 'UBA5',
+    'UAL5', 'UFA5', 'USP5',
+    'UAL6', 'UFA6',
+    'UAL7', 'UFA7',
+    'UAL8', 'UFA8',
+    'UAL9', 'UFA9',
+    'UAL10', 'UFA10'
+];
+
+// Returns the next set name according to SET_ORDER, or null if last / unknown
+// Skips sets that have no players in playersData (pass it as arg)
+const getNextSetInOrder = (currentSet, playersData) => {
+    const idx = SET_ORDER.indexOf(currentSet);
+    if (idx === -1) return null;
+    for (let i = idx + 1; i < SET_ORDER.length; i++) {
+        if (playersData.some(p => p.set === SET_ORDER[i])) {
+            return SET_ORDER[i];
+        }
+    }
+    return null;
+};
+
+// Find the first player in PLAYERS_DATA belonging to a given set
+const getFirstPlayerOfSet = (setName, playersData) => {
+    return playersData.find(p => p.set === setName) || null;
+};
+
+// Returns human-readable label for cinematic intro (user-specified mapping)
+const getSetLabel = (setCode) => {
+    // Match longest prefix first
+    const prefixMap = [
+        { prefix: 'UBA', label: 'Uncapped Batters' },
+        { prefix: 'UAL', label: 'Uncapped All-Rounders' },
+        { prefix: 'UWK', label: 'Uncapped Wicketkeepers' },
+        { prefix: 'UFA', label: 'Uncapped Fast Bowlers' },
+        { prefix: 'USP', label: 'Uncapped Spin Bowlers' },
+        { prefix: 'BA', label: 'Capped Batters' },
+        { prefix: 'AL', label: 'Capped All-Rounders' },
+        { prefix: 'WK', label: 'Capped Wicketkeepers' },
+        { prefix: 'FA', label: 'Fast Bowlers' },
+        { prefix: 'SP', label: 'Spin Bowlers' },
+        { prefix: 'M', label: 'Marquee Players' },
+    ];
+    const match = prefixMap.find(({ prefix }) => setCode.startsWith(prefix));
+    return match ? match.label : setCode;
+};
+
 const AnimatedPurse = ({ amount }) => {
     const [prevAmount, setPrevAmount] = useState(amount);
     const [animating, setAnimating] = useState(false);
@@ -65,10 +123,11 @@ const AnimatedPurse = ({ amount }) => {
 
 export default function Auction({ userData, onEnd }) {
     const [activeTab, setActiveTab] = useState('board');
+    const [PLAYERS_DATA, setPlayersData] = useState(RAW_PLAYERS_DATA);
 
     // Synced State
     const [auctionState, setAuctionState] = useState({
-        activePlayer: PLAYERS_DATA[0],
+        activePlayer: RAW_PLAYERS_DATA[0],
         currentPlayerIndex: 0,
         currentBid: 0,
         currentBidTeam: null,
@@ -83,6 +142,9 @@ export default function Auction({ userData, onEnd }) {
     const [allSquads, setAllSquads] = useState({});
     const [roomTimerSetting, setRoomTimerSetting] = useState(15);
     const [isPaused, setIsPaused] = useState(false);
+    const [unsoldPlayers, setUnsoldPlayers] = useState([]);
+    const [isStatsOpen, setIsStatsOpen] = useState(false);
+    const [statsActiveTab, setStatsActiveTab] = useState('upcoming');
 
     const handleDragEnd = (result) => {
         if (!result.destination) return;
@@ -140,11 +202,50 @@ export default function Auction({ userData, onEnd }) {
                     setIsPaused(false);
                 }
 
+                if (data.unsold) {
+                    setUnsoldPlayers(Array.isArray(data.unsold) ? data.unsold : Object.values(data.unsold));
+                } else {
+                    setUnsoldPlayers([]);
+                }
+
+                let currentPlayersData = RAW_PLAYERS_DATA;
+                if (data.shuffledIds) {
+                    currentPlayersData = data.shuffledIds.map(id => RAW_PLAYERS_DATA.find(p => p.id === id)).filter(Boolean);
+                    if (currentPlayersData.length === 0) currentPlayersData = RAW_PLAYERS_DATA;
+                    setPlayersData(currentPlayersData);
+                } else if (hostStatus) {
+                    // Generate new shuffled array on first setup
+                    const grouped = {};
+                    RAW_PLAYERS_DATA.forEach(p => {
+                        if (!grouped[p.set]) grouped[p.set] = [];
+                        grouped[p.set].push(p);
+                    });
+                    
+                    const newShuffledIds = [];
+                    // Keep sets in their original ordered sequence
+                    const orderedSets = [...new Set(RAW_PLAYERS_DATA.map(p => p.set))];
+                    orderedSets.forEach(setName => {
+                        const setPlayers = [...grouped[setName]];
+                        // Shuffle players inside this set
+                        for (let i = setPlayers.length - 1; i > 0; i--) {
+                            const j = Math.floor(Math.random() * (i + 1));
+                            const temp = setPlayers[i];
+                            setPlayers[i] = setPlayers[j];
+                            setPlayers[j] = temp;
+                        }
+                        setPlayers.forEach(p => newShuffledIds.push(p.id));
+                    });
+                    
+                    set(ref(db, `rooms/${userData.roomId}/shuffledIds`), newShuffledIds);
+                    currentPlayersData = newShuffledIds.map(id => RAW_PLAYERS_DATA.find(p => p.id === id)).filter(Boolean);
+                    setPlayersData(currentPlayersData);
+                }
+
                 if (data.auctionState) {
                     setAuctionState(data.auctionState);
                 } else if (hostStatus) {
                     // Initialize the auction state if it's completely missing
-                    const initialPlayer = PLAYERS_DATA[0];
+                    const initialPlayer = currentPlayersData[0] || RAW_PLAYERS_DATA[0];
                     const defaultTimer = data.settings?.timer || 15;
                     set(ref(db, `rooms/${userData.roomId}/auctionState`), {
                         activePlayer: initialPlayer,
@@ -175,6 +276,71 @@ export default function Auction({ userData, onEnd }) {
             set(ref(db, `rooms/${userData.roomId}/auctionState`), updatedState);
         }
     };
+
+    // Testing purpose only: switch to next player
+    const handleNextPlayerTest = () => {
+        if (!isHost) return;
+
+        const nextIndex = auctionState.currentPlayerIndex + 1;
+        const nextPlayer = nextIndex >= PLAYERS_DATA.length ? null : PLAYERS_DATA[nextIndex];
+
+        if (!nextPlayer) return;
+
+        set(ref(db, `rooms/${userData.roomId}/auctionState`), {
+            ...auctionState,
+            activePlayer: nextPlayer,
+            currentPlayerIndex: nextIndex,
+            currentBid: parseFloat(nextPlayer.basePrice),
+            currentBidTeam: null,
+            timer: roomTimerSetting,
+            isSold: false,
+            soldTo: null,
+            isRtmPhase: false,
+            isRtmUsedThisPlayer: false,
+            rtmTeam: null,
+            isSetTransition: false
+        });
+    };
+
+    // Testing purpose only: switch to previous player
+    const handlePrevPlayerTest = () => {
+        if (!isHost) return;
+
+        const prevIndex = auctionState.currentPlayerIndex - 1;
+        if (prevIndex < 0) return;
+        const prevPlayer = PLAYERS_DATA[prevIndex];
+
+        set(ref(db, `rooms/${userData.roomId}/auctionState`), {
+            ...auctionState,
+            activePlayer: prevPlayer,
+            currentPlayerIndex: prevIndex,
+            currentBid: parseFloat(prevPlayer.basePrice),
+            currentBidTeam: null,
+            timer: roomTimerSetting,
+            isSold: false,
+            soldTo: null,
+            isRtmPhase: false,
+            isRtmUsedThisPlayer: false,
+            rtmTeam: null,
+            isSetTransition: false
+        });
+    };
+
+    // Keyboard bindings for testing
+    useEffect(() => {
+        if (!isHost) return;
+
+        const handleKeyDown = (e) => {
+            if (e.key === 'ArrowRight') {
+                handleNextPlayerTest();
+            } else if (e.key === 'ArrowLeft') {
+                handlePrevPlayerTest();
+            }
+        };
+
+        window.addEventListener('keydown', handleKeyDown);
+        return () => window.removeEventListener('keydown', handleKeyDown);
+    }, [isHost, auctionState, roomTimerSetting, userData.roomId, PLAYERS_DATA]);
 
     // Host exclusively drives the game clock to prevent client drift
     useEffect(() => {
@@ -267,66 +433,71 @@ export default function Auction({ userData, onEnd }) {
 
             // After a 3 second delay, load the next player (or transition)
             setTimeout(() => {
-                const nextIndex = auctionState.currentPlayerIndex + 1;
-                const nextPlayer = nextIndex >= PLAYERS_DATA.length ? null : PLAYERS_DATA[nextIndex];
+                const currentSet = currentPlayer.set || 'M1';
+                // Determine next set using strict SET_ORDER (skip sets with no players)
+                const nextSetInOrder = getNextSetInOrder(currentSet, PLAYERS_DATA);
+                // Find the first player of the next set
+                const nextSetFirstPlayer = nextSetInOrder ? getFirstPlayerOfSet(nextSetInOrder, PLAYERS_DATA) : null;
 
-                if (!nextPlayer) {
+                // Check if any players remain in the CURRENT set after this player
+                const currentSetRemainingIdx = auctionState.currentPlayerIndex + 1;
+                const nextPlayerInData = currentSetRemainingIdx < PLAYERS_DATA.length ? PLAYERS_DATA[currentSetRemainingIdx] : null;
+                const isLastInSet = !nextPlayerInData || nextPlayerInData.set !== currentSet;
+
+                if (!nextPlayerInData && !nextSetFirstPlayer) {
+                    // Auction fully over
                     set(ref(db, `rooms/${userData.roomId}/auctionState`), {
                         ...auctionState,
                         isAuctionOver: true,
                         timer: 0
                     });
-                } else {
-                    const currentSet = currentPlayer.set || 'M1';
-                    const nextSet = nextPlayer.set || 'M1';
+                } else if (isLastInSet && nextSetInOrder && nextSetFirstPlayer) {
+                    // Last player in current set → cinematic set intro overlay
+                    const nextSetFirstIdx = PLAYERS_DATA.indexOf(nextSetFirstPlayer);
+                    set(ref(db, `rooms/${userData.roomId}/auctionState`), {
+                        ...auctionState,
+                        isSold: true,
+                        isSetTransition: true,
+                        transitionSet: nextSetInOrder,
+                        timer: 0
+                    });
 
-                    if (currentSet !== nextSet) {
-                        // Change to set transition state
-                        set(ref(db, `rooms/${userData.roomId}/auctionState`), {
-                            ...auctionState,
-                            isSold: true, // Keep it sold so the hook does not re-trigger
-                            isSetTransition: true,
-                            transitionSet: nextSet,
-                            timer: 0
-                        });
-
-                        // Wait for transition duration (3.5s) then advance
-                        setTimeout(() => {
-                            get(ref(db, `rooms/${userData.roomId}/settings/timer`)).then(snap => {
-                                const currentTimerVal = snap.val() || 15;
-                                set(ref(db, `rooms/${userData.roomId}/auctionState`), {
-                                    activePlayer: nextPlayer,
-                                    currentPlayerIndex: nextIndex,
-                                    currentBid: parseFloat(nextPlayer.basePrice),
-                                    currentBidTeam: null,
-                                    timer: currentTimerVal,
-                                    isSold: false,
-                                    soldTo: null,
-                                    isRtmPhase: false,
-                                    isRtmUsedThisPlayer: false,
-                                    rtmTeam: null,
-                                    isSetTransition: false
-                                });
-                            });
-                        }, 3500);
-                    } else {
-                        // Normal advance
+                    // After 4s (the CSS animation duration), resume auction with first player of next set
+                    setTimeout(() => {
                         get(ref(db, `rooms/${userData.roomId}/settings/timer`)).then(snap => {
                             const currentTimerVal = snap.val() || 15;
                             set(ref(db, `rooms/${userData.roomId}/auctionState`), {
-                                activePlayer: nextPlayer,
-                                currentPlayerIndex: nextIndex,
-                                currentBid: parseFloat(nextPlayer.basePrice),
+                                activePlayer: nextSetFirstPlayer,
+                                currentPlayerIndex: nextSetFirstIdx,
+                                currentBid: parseFloat(nextSetFirstPlayer.basePrice),
                                 currentBidTeam: null,
                                 timer: currentTimerVal,
                                 isSold: false,
                                 soldTo: null,
                                 isRtmPhase: false,
                                 isRtmUsedThisPlayer: false,
-                                rtmTeam: null
+                                rtmTeam: null,
+                                isSetTransition: false
                             });
                         });
-                    }
+                    }, 4000);
+                } else if (nextPlayerInData) {
+                    // Normal advance within same set
+                    get(ref(db, `rooms/${userData.roomId}/settings/timer`)).then(snap => {
+                        const currentTimerVal = snap.val() || 15;
+                        set(ref(db, `rooms/${userData.roomId}/auctionState`), {
+                            activePlayer: nextPlayerInData,
+                            currentPlayerIndex: currentSetRemainingIdx,
+                            currentBid: parseFloat(nextPlayerInData.basePrice),
+                            currentBidTeam: null,
+                            timer: currentTimerVal,
+                            isSold: false,
+                            soldTo: null,
+                            isRtmPhase: false,
+                            isRtmUsedThisPlayer: false,
+                            rtmTeam: null
+                        });
+                    });
                 }
             }, 3000);
 
@@ -341,7 +512,7 @@ export default function Auction({ userData, onEnd }) {
         }, 1000);
 
         return () => clearInterval(interval);
-    }, [isHost, auctionState.isSold, auctionState.timer, userData.roomId, auctionState, roomUsers, isPaused]);
+    }, [isHost, auctionState.isSold, auctionState.timer, userData.roomId, auctionState, roomUsers, isPaused, PLAYERS_DATA]);
 
     // Play hammer sound effect when player is sold
     useEffect(() => {
@@ -565,41 +736,170 @@ export default function Auction({ userData, onEnd }) {
         );
     }
 
+    const tabStyle = (isActive) => ({
+        display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '1rem 1.5rem',
+        cursor: 'pointer', border: 'none', background: 'transparent',
+        color: isActive ? '#fff' : '#a1a1aa', fontWeight: isActive ? 600 : 400,
+        borderBottom: isActive ? '2px solid #b45309' : '2px solid transparent',
+        transition: 'all 0.2s'
+    });
+
+    const formatPrice = (priceStr) => {
+        const num = parseFloat(priceStr);
+        if (num < 1) {
+            return `${(num * 100).toFixed(0)} L`;
+        }
+        return `${num.toFixed(2)} Cr`;
+    };
+
+    const upcomingPlayers = PLAYERS_DATA.slice(auctionState.currentPlayerIndex + 1);
+    const upcomingBySet = upcomingPlayers.reduce((acc, p) => {
+        if (!acc[p.set]) acc[p.set] = [];
+        acc[p.set].push(p);
+        return acc;
+    }, {});
+    const uniqueSets = [...new Set(upcomingPlayers.map(p => p.set))];
+
+    const soldCount = Object.values(allSquads).reduce((sum, squad) => sum + (squad ? squad.length : 0), 0);
+    const unsoldCount = unsoldPlayers.length;
+
     return (
         <div className="center-panel" style={{ position: 'relative' }}>
-            {/* SET TRANSITION OVERLAY */}
-            {auctionState.isSetTransition && (
+            {/* Menu Button */}
+            <button
+                onClick={() => setIsStatsOpen(true)}
+                style={{
+                    position: 'absolute', top: '10px', right: '10px',
+                    background: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.2)',
+                    color: '#fff', padding: '0.5rem 1rem', borderRadius: '8px',
+                    display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer', zIndex: 50
+                }}
+            >
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg>
+                Menu
+            </button>
+
+            {/* Stats Modal */}
+            {isStatsOpen && (
                 <div style={{
                     position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh',
-                    background: 'rgba(0,0,0,0.85)', backdropFilter: 'blur(8px)', zIndex: 10000,
+                    background: 'rgba(0,0,0,0.85)', backdropFilter: 'blur(5px)', zIndex: 10000,
                     display: 'flex', alignItems: 'center', justifyContent: 'center'
                 }}>
-                    <div className="set-transition-card animate-fade-in" style={{
-                        background: 'linear-gradient(180deg, #111827 0%, #000 100%)',
-                        border: '2px solid rgba(212, 175, 55, 0.4)',
-                        borderRadius: '16px', padding: '3rem', textAlign: 'center',
-                        maxWidth: '500px', boxShadow: '0 0 50px rgba(212, 175, 55, 0.2), inset 0 0 20px rgba(212, 175, 55, 0.1)',
-                        animation: 'slide-zoom-in 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards'
+                    <div style={{
+                        background: '#18181b', border: '1px solid #3f3f46',
+                        borderRadius: '12px', width: '90%', maxWidth: '850px',
+                        maxHeight: '90vh', display: 'flex', flexDirection: 'column',
+                        overflow: 'hidden', boxShadow: '0 20px 40px rgba(0,0,0,0.5)'
                     }}>
-                        <div style={{
-                            color: '#fbbf24', fontSize: '1rem', fontWeight: 800, letterSpacing: '3px',
-                            marginBottom: '1rem', textTransform: 'uppercase'
-                        }}>
-                            Set Completed
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '1.25rem 1.5rem', borderBottom: '1px solid #27272a' }}>
+                            <h2 style={{ fontSize: '1.5rem', fontWeight: 800, color: '#fff', margin: 0 }}>Auction Stats</h2>
+                            <button onClick={() => setIsStatsOpen(false)} style={{ background: 'transparent', border: 'none', color: '#a1a1aa', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0.5rem' }}>
+                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                            </button>
                         </div>
-                        <h2 style={{
-                            color: '#fff', fontSize: '2rem', fontWeight: 900, marginBottom: '2rem',
-                            textShadow: '0 4px 15px rgba(0,0,0,0.5)'
-                        }}>NEXT SET STARTING</h2>
-                        <div style={{
-                            background: 'rgba(212, 175, 55, 0.15)', padding: '1rem 2rem',
-                            borderRadius: '8px', border: '1px solid rgba(212, 175, 55, 0.5)',
-                            display: 'inline-block'
-                        }}>
-                            <span style={{ color: '#D4AF37', fontSize: '1.5rem', fontWeight: 900, letterSpacing: '2px' }}>
-                                {auctionState.transitionSet}
-                            </span>
+
+                        <div style={{ display: 'flex', padding: '0 1.5rem', borderBottom: '1px solid #27272a', background: '#1c1c21', overflowX: 'auto' }}>
+                            <button style={{ ...tabStyle(statsActiveTab === 'upcoming'), background: statsActiveTab === 'upcoming' ? '#27272a' : 'transparent' }} onClick={() => setStatsActiveTab('upcoming')}>
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+                                Upcoming <span style={{ background: statsActiveTab === 'upcoming' ? '#b45309' : '#3f3f46', color: '#fff', padding: '2px 8px', borderRadius: '4px', fontSize: '0.75rem', marginLeft: '0.5rem' }}>{upcomingPlayers.length}</span>
+                            </button>
+                            <button style={tabStyle(statsActiveTab === 'sold')} onClick={() => setStatsActiveTab('sold')}>
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
+                                Sold <span style={{ background: '#3f3f46', color: '#fff', padding: '2px 8px', borderRadius: '4px', fontSize: '0.75rem', marginLeft: '0.5rem' }}>{soldCount}</span>
+                            </button>
+                            <button style={tabStyle(statsActiveTab === 'unsold')} onClick={() => setStatsActiveTab('unsold')}>
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"></circle><line x1="15" y1="9" x2="9" y2="15"></line><line x1="9" y1="9" x2="15" y2="15"></line></svg>
+                                Unsold <span style={{ background: '#3f3f46', color: '#fff', padding: '2px 8px', borderRadius: '4px', fontSize: '0.75rem', marginLeft: '0.5rem' }}>{unsoldCount}</span>
+                            </button>
+                            <button style={tabStyle(statsActiveTab === 'leaderboard')} onClick={() => setStatsActiveTab('leaderboard')}>
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"></path><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"></path></svg>
+                                Leaderboard <span style={{ background: '#3f3f46', color: '#fff', padding: '2px 8px', borderRadius: '4px', fontSize: '0.75rem', marginLeft: '0.5rem' }}>0</span>
+                            </button>
                         </div>
+
+                        <div style={{ flex: 1, overflowY: 'auto', padding: '1.5rem', background: '#121214' }}>
+                            {statsActiveTab === 'upcoming' && (
+                                <>
+                                    <div style={{ background: 'rgba(168, 85, 247, 0.1)', border: '1px solid rgba(168, 85, 247, 0.3)', color: '#c084fc', padding: '0.75rem 1rem', borderRadius: '6px', fontSize: '0.9rem', marginBottom: '1.5rem' }}>
+                                        Upcoming player will be choosen randomly from each set during the auction.
+                                    </div>
+
+                                    {uniqueSets.map(set => (
+                                        <div key={set} style={{ marginBottom: '2rem' }}>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1rem' }}>
+                                                <div style={{ background: '#b45309', color: '#fff', padding: '0.25rem 0.75rem', borderRadius: '20px', fontWeight: 800, fontSize: '0.9rem' }}>{set}</div>
+                                                <div style={{ flex: 1, height: '1px', background: '#3f3f46' }}></div>
+                                                <div style={{ color: '#a1a1aa', fontSize: '0.85rem' }}>{upcomingBySet[set].length} players</div>
+                                            </div>
+
+                                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '1rem' }}>
+                                                {upcomingBySet[set].map((player, idx) => (
+                                                    <div key={player.id || idx} style={{ background: '#1c1c21', border: '1px solid #3f3f46', borderRadius: '12px', padding: '1rem', display: 'flex', flexDirection: 'column' }}>
+                                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.5rem' }}>
+                                                            <div style={{ fontSize: '1.1rem', fontWeight: 800, color: '#fff' }}>{player.firstName} {player.lastName}</div>
+                                                            <div style={{ textAlign: 'right' }}>
+                                                                <div style={{ color: '#10b981', fontWeight: 800, fontSize: '1rem' }}>{formatPrice(player.basePrice)}</div>
+                                                                <div style={{ color: '#71717a', fontSize: '0.75rem' }}>Base</div>
+                                                            </div>
+                                                        </div>
+                                                        <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                                                            <div style={{ background: 'rgba(168, 85, 247, 0.2)', color: '#d8b4fe', padding: '0.2rem 0.6rem', borderRadius: '4px', fontSize: '0.7rem' }}>{player.role}</div>
+                                                            {player.country && player.country !== 'IND' && (
+                                                                <div style={{ background: 'rgba(168, 85, 247, 0.2)', color: '#d8b4fe', padding: '0.2rem 0.6rem', borderRadius: '4px', fontSize: '0.7rem', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                                                    <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"></circle><line x1="2" y1="12" x2="22" y2="12"></line><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path></svg>
+                                                                    OS
+                                                                </div>
+                                                            )}
+                                                        </div>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    ))}
+                                </>
+                            )}
+                            {statsActiveTab !== 'upcoming' && (
+                                <div style={{ color: '#a1a1aa', textAlign: 'center', padding: '3rem' }}>
+                                    Content for {statsActiveTab} not implemented yet.
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                </div>
+            )}
+            {/* SET INTRO OVERLAY – single cinematic phase */}
+            {auctionState.isSetTransition && (
+                <div className="set-intro-overlay">
+                    {/* Full-screen dark background */}
+                    <div className="set-intro-bg" />
+
+                    {/* Gold light streak */}
+                    <div className="set-intro-streak-main" />
+
+                    {/* Radial glow behind text */}
+                    <div className="set-intro-radial-glow" />
+
+                    {/* Centre content */}
+                    <div className="set-intro-centre">
+                        {/* NEXT SET label */}
+                        <div className="set-intro-label">NEXT SET</div>
+
+                        {/* Top gold line */}
+                        <div className="set-intro-divider" />
+
+                        {/* Set code + full name */}
+                        <div className="set-intro-code-row">
+                            <span className="set-intro-code">{auctionState.transitionSet}</span>
+                            <span className="set-intro-dash">–</span>
+                            <span className="set-intro-name">{getSetLabel(auctionState.transitionSet || '')}</span>
+                        </div>
+
+                        {/* Bottom gold line */}
+                        <div className="set-intro-divider set-intro-divider-bottom" />
+
+                        {/* Subtitle */}
+                        <div className="set-intro-subtitle">Preparing next group of players…</div>
                     </div>
                 </div>
             )}
