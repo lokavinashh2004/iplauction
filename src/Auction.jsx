@@ -145,6 +145,7 @@ export default function Auction({ userData, onEnd }) {
     const [unsoldPlayers, setUnsoldPlayers] = useState([]);
     const [isStatsOpen, setIsStatsOpen] = useState(false);
     const [statsActiveTab, setStatsActiveTab] = useState('upcoming');
+    const [selectedSquadTeam, setSelectedSquadTeam] = useState(null);
 
     const handleDragEnd = (result) => {
         if (!result.destination) return;
@@ -269,14 +270,17 @@ export default function Auction({ userData, onEnd }) {
     // Extracted exactly from global state to fulfill prompt 100%
     const activePlayer = auctionState.activePlayer || PLAYERS_DATA[0];
 
-    // Preload next player image to improve UI responsiveness
+    // Preload next 5 player images to ensure instant display on transition
     useEffect(() => {
-        const nextIndex = auctionState.currentPlayerIndex + 1;
-        if (nextIndex >= 0 && nextIndex < PLAYERS_DATA.length) {
-            const nextPlayer = PLAYERS_DATA[nextIndex];
-            if (nextPlayer && nextPlayer.imageUrl) {
-                const img = new Image();
-                img.src = nextPlayer.imageUrl;
+        const currentIndex = auctionState.currentPlayerIndex;
+        for (let offset = 1; offset <= 5; offset++) {
+            const nextIndex = currentIndex + offset;
+            if (nextIndex >= 0 && nextIndex < PLAYERS_DATA.length) {
+                const nextPlayer = PLAYERS_DATA[nextIndex];
+                if (nextPlayer && nextPlayer.imageUrl) {
+                    const img = new Image();
+                    img.src = nextPlayer.imageUrl;
+                }
             }
         }
     }, [auctionState.currentPlayerIndex, PLAYERS_DATA]);
@@ -1213,159 +1217,91 @@ export default function Auction({ userData, onEnd }) {
                         </div>
                     )}
 
-                    {activeTab === 'board' && (
-                        <div className="squad-board-panel" style={{ display: 'flex', flexDirection: 'row', gap: '0.5rem', padding: '0 0.5rem', maxHeight: '350px' }}>
-                            <DragDropContext onDragEnd={handleDragEnd}>
-                                {/* My Squad Column */}
-                                <div style={{ flex: 1, display: 'flex', flexDirection: 'column', background: 'rgba(0,0,0,0.3)', borderRadius: '8px', overflow: 'hidden' }}>
-                                    <div style={{ background: '#111', padding: '0.5rem', textAlign: 'center', fontWeight: 800, fontSize: '0.85rem', letterSpacing: '1px', borderBottom: '2px solid #333' }}>
-                                        <div style={{ marginBottom: '0.2rem' }}>MY SQUAD</div>
-                                        {userData.team && (
-                                            <div className="squad-header-stats" style={{ fontSize: '0.7rem', display: 'flex', justifyContent: 'center', gap: '8px', alignItems: 'center' }}>
-                                                <span>
-                                                    <span style={{ color: '#aaa', fontWeight: 600 }}>PURSE: </span>
-                                                    <span style={{ color: '#10b981', fontWeight: 800 }}><AnimatedPurse amount={myPurse} /></span>
-                                                </span>
-                                                <span style={{ color: '#555' }}>|</span>
-                                                <span style={{ color: mySquadSize >= 25 ? '#ef4444' : '#aaa', fontWeight: 600 }}>({mySquadSize}/25)</span>
-                                                <span style={{ color: '#555' }}>|</span>
-                                                <span style={{ color: myOverseasCount >= 8 ? '#ef4444' : '#aaa', fontWeight: 600 }}>OS: {myOverseasCount}/8</span>
-                                                <span style={{ color: '#555' }}>|</span>
-                                                <span style={{ color: '#aaa', fontWeight: 600 }}>RTM: <span style={{ color: myRtms > 0 ? '#D4AF37' : '#ef4444', fontWeight: 800 }}>{myRtms}</span></span>
+                    {activeTab === 'board' && (() => {
+                        const activeViewTeam = selectedSquadTeam || userData.team || Object.keys(TEAM_COLORS)[0];
+                        const activeSquad = allSquads[activeViewTeam] || [];
+                        const activeTeamPurse = getTeamPurse(activeViewTeam);
+                        const activeSquadSize = activeSquad.length;
+                        const activeOverseasCount = activeSquad.filter(p => p.country && p.country !== 'IND').length;
+                        const activeRtms = getTeamRtms(activeViewTeam);
+                        return (
+                            <div className="squad-board-panel" style={{ display: 'flex', flexDirection: 'column', padding: '0 0.5rem', maxHeight: '350px' }}>
+                                <DragDropContext onDragEnd={handleDragEnd}>
+                                    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', background: 'rgba(0,0,0,0.3)', borderRadius: '8px', overflow: 'hidden' }}>
+                                        <div style={{ background: '#111', padding: '0.5rem', display: 'flex', flexDirection: 'column', alignItems: 'center', borderBottom: '2px solid #333' }}>
+                                            <div style={{ marginBottom: '0.5rem', width: '100%', display: 'flex', justifyContent: 'center' }}>
+                                                <select
+                                                    value={activeViewTeam}
+                                                    onChange={(e) => setSelectedSquadTeam(e.target.value)}
+                                                    style={{ padding: '0.3rem 0.5rem', background: '#222', color: '#fff', border: '1px solid #444', borderRadius: '4px', fontWeight: 800, cursor: 'pointer', outline: 'none' }}
+                                                >
+                                                    {Object.keys(TEAM_COLORS).map(t => (
+                                                        <option key={t} value={t}>{t === userData.team ? `MY SQUAD (${t})` : `${t} SQUAD`}</option>
+                                                    ))}
+                                                </select>
                                             </div>
-                                        )}
-                                    </div>
-                                    <Droppable droppableId={userData.team || 'unassigned_my_squad'}>
-                                        {(provided) => (
-                                            <div ref={provided.innerRef} {...provided.droppableProps} style={{ flex: 1, overflowY: 'auto', padding: '0.5rem' }}>
-                                                {(!userData.team || !allSquads[userData.team] || allSquads[userData.team].length === 0) ? (
-                                                    <div style={{ textAlign: 'center', color: '#666', fontSize: '0.8rem', marginTop: '1rem' }}>No players yet</div>
-                                                ) : (
-                                                    allSquads[userData.team].map((player, index) => (
-                                                        <Draggable key={player.id} draggableId={`my_${player.id}`} index={index}>
-                                                            {(provided, snapshot) => (
-                                                                <div
-                                                                    ref={provided.innerRef}
-                                                                    {...provided.draggableProps}
-                                                                    {...provided.dragHandleProps}
-                                                                    className={isSold && player.id === activePlayer.id ? 'newly-sold-highlight' : ''}
-                                                                    style={{
-                                                                        ...provided.draggableProps.style,
-                                                                        display: 'flex',
-                                                                        alignItems: 'center',
-                                                                        background: 'linear-gradient(90deg, #E5C370 0%, #FFF5C3 50%, #E5C370 100%)',
-                                                                        borderRadius: '4px',
-                                                                        padding: '0.25rem 0.5rem',
-                                                                        border: '1px solid #B8860B',
-                                                                        boxShadow: snapshot.isDragging ? '0 8px 16px rgba(0,0,0,0.6)' : '0 2px 4px rgba(0,0,0,0.4)',
-                                                                        marginBottom: '0.4rem',
-                                                                        transform: snapshot.isDragging ? 'scale(1.03)' : provided.draggableProps.style?.transform,
-                                                                        color: '#1A1A1A',
-                                                                        fontWeight: 900
-                                                                    }}
-                                                                >
-                                                                    <div style={{ fontSize: '0.65rem', width: '25px', color: '#555' }}>
-                                                                        {String(player.id).padStart(3, '0')}
-                                                                    </div>
-                                                                    <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.75rem', letterSpacing: '0.5px', textTransform: 'uppercase' }}>
-                                                                        <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{player.name}</span>
-                                                                        {player.country && player.country !== 'IND' && (
-                                                                            <span style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, background: '#e11d48', borderRadius: '50%', width: '13px', height: '13px', marginLeft: '4px', boxShadow: '0 1px 2px rgba(0,0,0,0.2)' }} title="Overseas Player">
-                                                                                <svg fill="white" viewBox="0 0 24 24" width="9" height="9"><path d="M21 16v-2l-8-5V3.5c0-.83-.67-1.5-1.5-1.5S10 2.67 10 3.5V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L13 19v-5.5l8 2.5z" /></svg>
-                                                                            </span>
-                                                                        )}
-                                                                    </div>
-                                                                    <div style={{ width: '16px', height: '16px', flexShrink: 0 }}>
-                                                                        <img src={IPL_LOGOS[userData.team]} alt="" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
-                                                                    </div>
-                                                                </div>
-                                                            )}
-                                                        </Draggable>
-                                                    ))
-                                                )}
-                                                {provided.placeholder}
+                                            <div style={{ fontSize: '0.7rem', display: 'flex', justifyContent: 'center', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
+                                                <span><span style={{ color: '#aaa', fontWeight: 600 }}>PURSE: </span><span style={{ color: '#10b981', fontWeight: 800 }}><AnimatedPurse amount={activeTeamPurse} /></span></span>
+                                                <span style={{ color: '#555' }}>|</span>
+                                                <span style={{ color: activeSquadSize >= 25 ? '#ef4444' : '#aaa', fontWeight: 600 }}>({activeSquadSize}/25)</span>
+                                                <span style={{ color: '#555' }}>|</span>
+                                                <span style={{ color: activeOverseasCount >= 8 ? '#ef4444' : '#aaa', fontWeight: 600 }}>OS: {activeOverseasCount}/8</span>
+                                                <span style={{ color: '#555' }}>|</span>
+                                                <span style={{ color: '#aaa', fontWeight: 600 }}>RTM: <span style={{ color: activeRtms > 0 ? '#D4AF37' : '#ef4444', fontWeight: 800 }}>{activeRtms}</span></span>
                                             </div>
-                                        )}
-                                    </Droppable>
-                                </div>
-
-                                {/* Other Squads Column */}
-                                <div style={{ flex: 1, display: 'flex', flexDirection: 'column', background: 'rgba(0,0,0,0.3)', borderRadius: '8px', overflow: 'hidden' }}>
-                                    <div style={{ background: '#111', padding: '0.5rem', textAlign: 'center', fontWeight: 800, fontSize: '0.85rem', letterSpacing: '1px', borderBottom: '2px solid #333' }}>
-                                        OTHER SQUADS
-                                    </div>
-                                    <div style={{ flex: 1, overflowY: 'auto', padding: '0.5rem' }}>
-                                        {Object.entries(allSquads).filter(([teamName]) => teamName !== userData.team).length === 0 ? (
-                                            <div style={{ textAlign: 'center', color: '#666', fontSize: '0.8rem', marginTop: '1rem' }}>No players yet</div>
-                                        ) : (
-                                            Object.entries(allSquads).filter(([teamName]) => teamName !== userData.team).map(([teamName, squad]) => (
-                                                <div key={teamName} style={{ marginBottom: '1rem' }}>
-                                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', marginBottom: '0.4rem', borderBottom: `1px solid ${TEAM_COLORS[teamName] || '#555'}`, paddingBottom: '0.2rem' }}>
-                                                        <img src={IPL_LOGOS[teamName]} style={{ width: '14px', height: '14px' }} alt="" />
-                                                        <span style={{ fontSize: '0.75rem', fontWeight: 800, color: TEAM_COLORS[teamName] || '#fff' }}>{teamName}</span>
-                                                        <span style={{ marginLeft: '0.5rem', fontSize: '0.65rem', color: squad.length >= 25 ? '#ef4444' : '#888', fontWeight: 600 }}>({squad.length}/25)</span>
-                                                        <span style={{ marginLeft: '0.5rem', fontSize: '0.65rem', color: squad.filter(p => p.country && p.country !== 'IND').length >= 8 ? '#ef4444' : '#888', fontWeight: 600 }}>OS: {squad.filter(p => p.country && p.country !== 'IND').length}/8</span>
-                                                        <span style={{ marginLeft: '0.5rem', fontSize: '0.65rem', color: getTeamRtms(teamName) === 0 ? '#ef4444' : '#D4AF37', fontWeight: 600 }}>RTM: {getTeamRtms(teamName)}</span>
-                                                        <div style={{ marginLeft: 'auto', fontSize: '0.7rem', fontWeight: 800, color: '#10b981' }}>
-                                                            <AnimatedPurse amount={getTeamPurse(teamName)} />
-                                                        </div>
-                                                    </div>
-                                                    <Droppable droppableId={teamName}>
-                                                        {(provided) => (
-                                                            <div ref={provided.innerRef} {...provided.droppableProps} style={{ minHeight: '10px' }}>
-                                                                {squad.map((player, index) => (
-                                                                    <Draggable key={player.id} draggableId={`other_${teamName}_${player.id}`} index={index}>
-                                                                        {(provided, snapshot) => (
-                                                                            <div
-                                                                                ref={provided.innerRef}
-                                                                                {...provided.draggableProps}
-                                                                                {...provided.dragHandleProps}
-                                                                                className={isSold && player.id === activePlayer.id ? 'newly-sold-highlight' : ''}
-                                                                                style={{
-                                                                                    ...provided.draggableProps.style,
-                                                                                    display: 'flex',
-                                                                                    alignItems: 'center',
-                                                                                    background: 'linear-gradient(90deg, #E5C370 0%, #FFF5C3 50%, #E5C370 100%)',
-                                                                                    borderRadius: '4px',
-                                                                                    padding: '0.25rem 0.5rem',
-                                                                                    border: '1px solid #B8860B',
-                                                                                    boxShadow: snapshot.isDragging ? '0 8px 16px rgba(0,0,0,0.6)' : '0 2px 4px rgba(0,0,0,0.4)',
-                                                                                    marginBottom: '0.4rem',
-                                                                                    transform: snapshot.isDragging ? 'scale(1.03)' : provided.draggableProps.style?.transform,
-                                                                                    color: '#1A1A1A',
-                                                                                    fontWeight: 900
-                                                                                }}
-                                                                            >
-                                                                                <div style={{ fontSize: '0.65rem', width: '25px', color: '#555' }}>
-                                                                                    {String(player.id).padStart(3, '0')}
-                                                                                </div>
-                                                                                <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.75rem', letterSpacing: '0.5px', textTransform: 'uppercase' }}>
-                                                                                    <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{player.name}</span>
-                                                                                    {player.country && player.country !== 'IND' && (
-                                                                                        <span style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, background: '#e11d48', borderRadius: '50%', width: '13px', height: '13px', marginLeft: '4px', boxShadow: '0 1px 2px rgba(0,0,0,0.2)' }} title="Overseas Player">
-                                                                                            <svg fill="white" viewBox="0 0 24 24" width="9" height="9"><path d="M21 16v-2l-8-5V3.5c0-.83-.67-1.5-1.5-1.5S10 2.67 10 3.5V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L13 19v-5.5l8 2.5z" /></svg>
-                                                                                        </span>
-                                                                                    )}
-                                                                                </div>
-                                                                                <div style={{ width: '16px', height: '16px', flexShrink: 0 }}>
-                                                                                    <img src={IPL_LOGOS[teamName]} alt="" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
-                                                                                </div>
-                                                                            </div>
-                                                                        )}
-                                                                    </Draggable>
-                                                                ))}
-                                                                {provided.placeholder}
-                                                            </div>
-                                                        )}
-                                                    </Droppable>
+                                        </div>
+                                        <Droppable droppableId={activeViewTeam}>
+                                            {(provided) => (
+                                                <div ref={provided.innerRef} {...provided.droppableProps} style={{ flex: 1, overflowY: 'auto', padding: '0.5rem' }}>
+                                                    {activeSquad.length === 0 ? (
+                                                        <div style={{ textAlign: 'center', color: '#666', fontSize: '0.8rem', marginTop: '1rem' }}>No players yet</div>
+                                                    ) : (
+                                                        activeSquad.map((player, index) => (
+                                                            <Draggable key={player.id} draggableId={`view_${activeViewTeam}_${player.id}`} index={index}>
+                                                                {(provided, snapshot) => (
+                                                                    <div
+                                                                        ref={provided.innerRef}
+                                                                        {...provided.draggableProps}
+                                                                        {...provided.dragHandleProps}
+                                                                        className={isSold && player.id === activePlayer.id ? 'newly-sold-highlight' : ''}
+                                                                        style={{
+                                                                            ...provided.draggableProps.style,
+                                                                            display: 'flex', alignItems: 'center',
+                                                                            background: 'linear-gradient(90deg, #E5C370 0%, #FFF5C3 50%, #E5C370 100%)',
+                                                                            borderRadius: '4px', padding: '0.25rem 0.5rem',
+                                                                            border: '1px solid #B8860B',
+                                                                            boxShadow: snapshot.isDragging ? '0 8px 16px rgba(0,0,0,0.6)' : '0 2px 4px rgba(0,0,0,0.4)',
+                                                                            marginBottom: '0.4rem',
+                                                                            transform: snapshot.isDragging ? 'scale(1.03)' : provided.draggableProps.style?.transform,
+                                                                            color: '#1A1A1A', fontWeight: 900
+                                                                        }}
+                                                                    >
+                                                                        <div style={{ fontSize: '0.65rem', width: '25px', color: '#555' }}>{String(player.id).padStart(3, '0')}</div>
+                                                                        <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.75rem', letterSpacing: '0.5px', textTransform: 'uppercase' }}>
+                                                                            <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{player.name}</span>
+                                                                            {player.country && player.country !== 'IND' && (
+                                                                                <span style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, background: '#e11d48', borderRadius: '50%', width: '13px', height: '13px', marginLeft: '4px' }} title="Overseas Player">
+                                                                                    <svg fill="white" viewBox="0 0 24 24" width="9" height="9"><path d="M21 16v-2l-8-5V3.5c0-.83-.67-1.5-1.5-1.5S10 2.67 10 3.5V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L13 19v-5.5l8 2.5z" /></svg>
+                                                                                </span>
+                                                                            )}
+                                                                        </div>
+                                                                        <div style={{ width: '16px', height: '16px', flexShrink: 0 }}>
+                                                                            <img src={IPL_LOGOS[activeViewTeam]} alt="" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+                                                                        </div>
+                                                                    </div>
+                                                                )}
+                                                            </Draggable>
+                                                        ))
+                                                    )}
+                                                    {provided.placeholder}
                                                 </div>
-                                            ))
-                                        )}
+                                            )}
+                                        </Droppable>
                                     </div>
-                                </div>
-                            </DragDropContext>
-                        </div>
-                    )}
+                                </DragDropContext>
+                            </div>
+                        );
+                    })()} 
 
                     {activeTab === 'settings' && (
                         <div className="settings-panel">
