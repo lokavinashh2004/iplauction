@@ -134,6 +134,20 @@ function App() {
     } catch (e) { console.error('Error leaving room', e); }
   };
 
+  const handleEndRoom = async () => {
+    if (!userData.roomId) return;
+    if (window.confirm("Are you sure you want to completely delete this room and all its data? This will kick all players and cannot be undone.")) {
+      try {
+        await remove(ref(db, `rooms/${userData.roomId}`));
+        setUserData(prev => ({ ...prev, roomId: '', team: null, hasJoined: false }));
+        setCurrentPage('home');
+        window.location.hash = '';
+      } catch (e) {
+        console.error('Error deleting room', e);
+      }
+    }
+  };
+
   const isHost = !!(userData.name && hostName === userData.name);
 
   return (
@@ -215,7 +229,7 @@ function App() {
           {currentPage === 'room' ? (
             <Room userData={userData} setUserData={setUserData} isHost={isHost} />
           ) : (
-            <Auction userData={userData} onEnd={() => setCurrentPage('home')} />
+            <Auction userData={userData} onEnd={handleEndRoom} />
           )}
         </main>
       )}
