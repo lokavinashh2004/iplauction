@@ -380,15 +380,24 @@ export default function Auction({ userData, onEnd }) {
             set(ref(db, `rooms/${userData.roomId}/auctionState`), updatedState);
 
             const playerSnapshot = {
-                id: currentPlayer.id,
-                name: `${currentPlayer.firstName} ${currentPlayer.lastName}`,
-                role: currentPlayer.role,
-                boughtFor: auctionState.currentBid || parseFloat(currentPlayer.basePrice),
-                image: currentPlayer.imageUrl,
-                country: currentPlayer.country
+                id: currentPlayer.id || Date.now(),
+                name: `${currentPlayer.firstName || ''} ${currentPlayer.lastName || ''}`.trim(),
+                role: currentPlayer.role || 'Unknown',
+                boughtFor: auctionState.currentBid || parseFloat(currentPlayer.basePrice || 0) || 0,
+                image: currentPlayer.imageUrl || '',
+                country: currentPlayer.country || 'Unknown'
             };
 
             if (finalBuyer !== 'UNSOLD') {
+                // Add to Squad REGARDLESS of whether the specific team user is currently online/in roomUsers
+                get(ref(db, `rooms/${userData.roomId}/squads/${finalBuyer}`)).then(snap => {
+                    const currentSquad = snap.val() || [];
+                    // Check to avoid duplicate additions
+                    if (!currentSquad.some(p => p.id === playerSnapshot.id)) {
+                        set(ref(db, `rooms/${userData.roomId}/squads/${finalBuyer}`), [...currentSquad, playerSnapshot]);
+                    }
+                });
+
                 // Find user doc by team
                 const buyerName = Object.keys(roomUsers).find(name => roomUsers[name].team === finalBuyer);
                 if (buyerName) {
@@ -401,18 +410,14 @@ export default function Auction({ userData, onEnd }) {
                     if (auctionState.isRtmUsedThisPlayer && finalBuyer === prevTeamName) {
                         set(ref(db, `rooms/${userData.roomId}/users/${buyerName}/rtms`), Math.max(0, rtmCount - 1));
                     }
-
-                    // Add to Squad
-                    get(ref(db, `rooms/${userData.roomId}/squads/${finalBuyer}`)).then(snap => {
-                        const currentSquad = snap.val() || [];
-                        set(ref(db, `rooms/${userData.roomId}/squads/${finalBuyer}`), [...currentSquad, playerSnapshot]);
-                    });
                 }
             } else {
                 // Add to Unsold List
                 get(ref(db, `rooms/${userData.roomId}/unsold`)).then(snap => {
                     const unsoldList = snap.val() || [];
-                    set(ref(db, `rooms/${userData.roomId}/unsold`), [...unsoldList, playerSnapshot]);
+                    if (!unsoldList.some(p => p.id === playerSnapshot.id)) {
+                        set(ref(db, `rooms/${userData.roomId}/unsold`), [...unsoldList, playerSnapshot]);
+                    }
                 });
             }
 
@@ -512,7 +517,7 @@ export default function Auction({ userData, onEnd }) {
         }, 1000);
 
         return () => clearInterval(interval);
-    }, [isHost, auctionState.isSold, auctionState.timer, userData.roomId, auctionState, roomUsers, isPaused, PLAYERS_DATA]);
+    }, [isHost, auctionState.isSold, auctionState.timer, userData.roomId, auctionState, roomUsers, isPaused, PLAYERS_DATA, allSquads]);
 
     // Play hammer sound effect when player is sold
     useEffect(() => {
