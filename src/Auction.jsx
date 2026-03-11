@@ -269,6 +269,18 @@ export default function Auction({ userData, onEnd }) {
     // Extracted exactly from global state to fulfill prompt 100%
     const activePlayer = auctionState.activePlayer || PLAYERS_DATA[0];
 
+    // Preload next player image to improve UI responsiveness
+    useEffect(() => {
+        const nextIndex = auctionState.currentPlayerIndex + 1;
+        if (nextIndex >= 0 && nextIndex < PLAYERS_DATA.length) {
+            const nextPlayer = PLAYERS_DATA[nextIndex];
+            if (nextPlayer && nextPlayer.imageUrl) {
+                const img = new Image();
+                img.src = nextPlayer.imageUrl;
+            }
+        }
+    }, [auctionState.currentPlayerIndex, PLAYERS_DATA]);
+
     // Pick a random team when bidding to demonstrate different team effects
     const handleBidSold = () => {
         if (isHost && !auctionState.isSold) {
