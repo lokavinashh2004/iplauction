@@ -221,7 +221,7 @@ export default function Auction({ userData, onEnd }) {
                         if (!grouped[p.set]) grouped[p.set] = [];
                         grouped[p.set].push(p);
                     });
-                    
+
                     const newShuffledIds = [];
                     // Keep sets in their original ordered sequence
                     const orderedSets = [...new Set(RAW_PLAYERS_DATA.map(p => p.set))];
@@ -236,7 +236,7 @@ export default function Auction({ userData, onEnd }) {
                         }
                         setPlayers.forEach(p => newShuffledIds.push(p.id));
                     });
-                    
+
                     set(ref(db, `rooms/${userData.roomId}/shuffledIds`), newShuffledIds);
                     currentPlayersData = newShuffledIds.map(id => RAW_PLAYERS_DATA.find(p => p.id === id)).filter(Boolean);
                     setPlayersData(currentPlayersData);
@@ -251,7 +251,7 @@ export default function Auction({ userData, onEnd }) {
                     set(ref(db, `rooms/${userData.roomId}/auctionState`), {
                         activePlayer: initialPlayer,
                         currentPlayerIndex: 0,
-                        currentBid: parseFloat(initialPlayer.basePrice),
+                        currentBid: 0,
                         currentBidTeam: null,
                         timer: defaultTimer,
                         isSold: false,
@@ -306,7 +306,7 @@ export default function Auction({ userData, onEnd }) {
             ...auctionState,
             activePlayer: nextPlayer,
             currentPlayerIndex: nextIndex,
-            currentBid: parseFloat(nextPlayer.basePrice),
+            currentBid: 0,
             currentBidTeam: null,
             timer: roomTimerSetting,
             isSold: false,
@@ -330,7 +330,7 @@ export default function Auction({ userData, onEnd }) {
             ...auctionState,
             activePlayer: prevPlayer,
             currentPlayerIndex: prevIndex,
-            currentBid: parseFloat(prevPlayer.basePrice),
+            currentBid: 0,
             currentBidTeam: null,
             timer: roomTimerSetting,
             isSold: false,
@@ -490,7 +490,7 @@ export default function Auction({ userData, onEnd }) {
                             set(ref(db, `rooms/${userData.roomId}/auctionState`), {
                                 activePlayer: nextSetFirstPlayer,
                                 currentPlayerIndex: nextSetFirstIdx,
-                                currentBid: parseFloat(nextSetFirstPlayer.basePrice),
+                                currentBid: 0,
                                 currentBidTeam: null,
                                 timer: currentTimerVal,
                                 isSold: false,
@@ -509,7 +509,7 @@ export default function Auction({ userData, onEnd }) {
                         set(ref(db, `rooms/${userData.roomId}/auctionState`), {
                             activePlayer: nextPlayerInData,
                             currentPlayerIndex: currentSetRemainingIdx,
-                            currentBid: parseFloat(nextPlayerInData.basePrice),
+                            currentBid: 0,
                             currentBidTeam: null,
                             timer: currentTimerVal,
                             isSold: false,
@@ -554,7 +554,7 @@ export default function Auction({ userData, onEnd }) {
 
     const myPurse = roomUsers[userData.name]?.purse !== undefined ? roomUsers[userData.name].purse : 100.00;
     const myRtms = roomUsers[userData.name]?.rtms !== undefined ? roomUsers[userData.name].rtms : 3;
-    const nextBidAmount = auctionState.currentBid ? auctionState.currentBid + 0.5 : parseFloat(activePlayer.basePrice);
+    const nextBidAmount = auctionState.currentBid === 0 ? parseFloat(activePlayer.basePrice) : auctionState.currentBid + 0.25;
 
     const actualMyTeam = roomUsers[userData.name]?.team || userData.team;
 
@@ -797,7 +797,7 @@ export default function Auction({ userData, onEnd }) {
                 }}
             >
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg>
-                Menu
+                Players List
             </button>
 
             {/* Stats Modal */}
@@ -1301,7 +1301,7 @@ export default function Auction({ userData, onEnd }) {
                                 </DragDropContext>
                             </div>
                         );
-                    })()} 
+                    })()}
 
                     {activeTab === 'settings' && (
                         <div className="settings-panel">

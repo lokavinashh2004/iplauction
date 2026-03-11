@@ -13,19 +13,6 @@ export const playersData = [
         "imageUrl": "/player images/Jos Buttler.png"
     },
     {
-        "id": 2,
-        "firstName": "SHREYAS",
-        "lastName": "IYER",
-        "role": "Batter",
-        "country": "IND",
-        "age": 30,
-        "previousTeam": "KKR",
-        "basePrice": "2.00",
-        "iplStat": "116 Matches",
-        "set": "M1",
-        "imageUrl": "/player images/Shreyas_Iyer.png"
-    },
-    {
         "id": 3,
         "firstName": "RISHABH",
         "lastName": "PANT",
