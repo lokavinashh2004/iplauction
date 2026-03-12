@@ -93,9 +93,6 @@ export default function Home({ userData, setUserData, onJoin }) {
                     <span>2026 Official List • 350 Players</span>
                 </div>
 
-                {/* Ads Component */}
-                <ResponsiveAdBanner />
-
                 {/* Buttons */}
                 <div className="home-cta-group animate-fade-in">
                     <button className="home-btn-create" onClick={() => setViewMode('create')}>
@@ -115,6 +112,9 @@ export default function Home({ userData, setUserData, onJoin }) {
                         Join Room
                     </button>
                 </div>
+
+                {/* Ads Component */}
+                <ResponsiveAdBanner />
             </div>
 
             {/* ── CREATE ROOM form ── */}
