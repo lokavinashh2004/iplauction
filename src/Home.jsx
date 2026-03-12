@@ -1,5 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
-import { BannerAd468, NativeBannerAd } from './AdBanner';
+import { useState, useEffect } from 'react';
 import { db } from './firebase';
 import { ref, set, onValue, onDisconnect, get } from 'firebase/database';
 
@@ -28,7 +27,6 @@ export default function Home({ userData, setUserData, onJoin }) {
     const [viewMode, setViewMode] = useState(() => (userData.roomId ? 'join' : 'select'));
     const [joinRoomId, setJoinRoomId] = useState(userData.roomId || '');
     const [takenTeams, setTakenTeams] = useState([]);
-    const [bannerDismissed, setBannerDismissed] = useState(false);
 
     useEffect(() => {
         if (!joinRoomId) { setTakenTeams([]); return; }
@@ -67,7 +65,6 @@ export default function Home({ userData, setUserData, onJoin }) {
     };
 
     return (
-        <div className="home-page-wrapper">
         <div className="home-hero">
             {/* ── Background image ── */}
             <div className="home-hero-bg" />
@@ -115,22 +112,6 @@ export default function Home({ userData, setUserData, onJoin }) {
                     </button>
                 </div>
             </div>
-
-            {/* ── Sticky bottom banner ad on hero (dismissible) ── */}
-            {!bannerDismissed && (
-                <div className="home-hero-banner-ad">
-                    <div className="home-hero-banner-ad-inner">
-                        <NativeBannerAd />
-                    </div>
-                    <button
-                        className="home-hero-banner-close"
-                        onClick={() => setBannerDismissed(true)}
-                        aria-label="Close ad"
-                    >
-                        ✕
-                    </button>
-                </div>
-            )}
 
             {/* ── CREATE ROOM form ── */}
             {viewMode === 'create' && (
@@ -241,63 +222,6 @@ export default function Home({ userData, setUserData, onJoin }) {
                     </div>
                 </div>
             )}
-        </div>
-
-        {/* ── Footer ── only shows on home landing screen ── */}
-        <footer className="home-footer">
-            <div className="home-footer-inner">
-
-                {/* Top row: brand + nav links */}
-                <div className="home-footer-top">
-                    <div className="home-footer-brand">
-                        <span className="home-footer-logo">🏏 IPL Auction</span>
-                        <p className="home-footer-tagline">The ultimate fan-made IPL auction experience. Draft your dream squad with friends in real time.</p>
-                    </div>
-                    <div className="home-footer-links">
-                        <span className="home-footer-col-title">Features</span>
-                        <ul>
-                            <li>🔴 Live multiplayer rooms</li>
-                            <li>🏆 350 official IPL 2026 players</li>
-                            <li>⚡ Real-time bidding</li>
-                            <li>📊 Squad tracker</li>
-                            <li>🎯 Host controls &amp; pause</li>
-                        </ul>
-                    </div>
-                    <div className="home-footer-links">
-                        <span className="home-footer-col-title">Teams</span>
-                        <ul>
-                            <li>🔵 Mumbai Indians</li>
-                            <li>🟡 Chennai Super Kings</li>
-                            <li>🔴 Royal Challengers</li>
-                            <li>🟣 Kolkata Knight Riders</li>
-                            <li>+ 6 more franchises</li>
-                        </ul>
-                    </div>
-                    <div className="home-footer-links">
-                        <span className="home-footer-col-title">How to Play</span>
-                        <ul>
-                            <li>1. Create a room</li>
-                            <li>2. Share the code</li>
-                            <li>3. Pick your team</li>
-                            <li>4. Host starts auction</li>
-                            <li>5. Bid &amp; build your squad!</li>
-                        </ul>
-                    </div>
-                </div>
-
-                {/* Divider */}
-                <div className="home-footer-divider" />
-
-                {/* Bottom row: copyright + ad */}
-                <div className="home-footer-bottom">
-                    <p className="home-footer-copy">© {new Date().getFullYear()} IPL Auction Game · Fan-made · Not affiliated with BCCI or IPL</p>
-                    <div className="home-footer-ad">
-                        <BannerAd468 />
-                    </div>
-                </div>
-
-            </div>
-        </footer>
         </div>
     );
 }
