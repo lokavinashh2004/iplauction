@@ -1,10 +1,127 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { db } from './firebase';
 import { ref, onValue, get, remove, set, update } from 'firebase/database';
 import './App.css';
 import Home from './Home';
 import Room from './Room';
 import Auction from './Auction';
+
+function ScriptTag({ src, async = true }) {
+  useEffect(() => {
+    if (!src) return;
+    if (document.querySelector(`script[data-ad-src="${src}"]`)) return;
+
+    const s = document.createElement('script');
+    s.src = src;
+    s.async = async;
+    s.setAttribute('data-ad-src', src);
+    document.body.appendChild(s);
+
+    return () => {
+      // Keep scripts loaded to avoid re-requesting on page switches.
+    };
+  }, [src, async]);
+
+  return null;
+}
+
+function NativeBanner() {
+  // Provider: effectivegatecpm native container
+  useEffect(() => {
+    const src = 'https://pl28898574.effectivegatecpm.com/1d774fb35f73e6f7eb66b8b54ca74a28/invoke.js';
+    const s = document.createElement('script');
+    s.async = true;
+    s.dataset.cfasync = 'false';
+    const bustSrc = `${src}?t=${Date.now()}`;
+    s.src = bustSrc;
+    s.setAttribute('data-ad-src', bustSrc);
+    s.setAttribute('data-ad-native', 'effectivegatecpm');
+    document.body.appendChild(s);
+
+    return () => {
+      // Remove only the instance we injected for this mount.
+      try { s.remove(); } catch { /* noop */ }
+    };
+  }, []);
+
+  return <div id="container-1d774fb35f73e6f7eb66b8b54ca74a28" style={{ width: '100%' }} />;
+}
+
+function AtIframeBanner({ adKey, width, height }) {
+  const containerRef = useRef(null);
+
+  useEffect(() => {
+    if (!adKey || !width || !height) return;
+    if (!containerRef.current) return;
+
+    let cancelled = false;
+
+    const enqueue = (task) => {
+      window.__atAdQueue = (window.__atAdQueue || Promise.resolve()).then(task, task);
+      return window.__atAdQueue;
+    };
+
+    enqueue(
+      () =>
+        new Promise((resolve) => {
+          if (cancelled) return resolve();
+
+          const container = containerRef.current;
+          if (!container) return resolve();
+
+          // Clear previous ad markup if any (useful on remounts).
+          container.innerHTML = '';
+
+          // This network expects a global `atOptions` right before its invoke.js executes.
+          window.atOptions = {
+            key: adKey,
+            format: 'iframe',
+            height,
+            width,
+            params: {}
+          };
+
+          const src = `https://www.highperformanceformat.com/${adKey}/invoke.js`;
+          const s = document.createElement('script');
+          s.src = src;
+          s.async = true;
+          s.setAttribute('data-ad-src', src);
+
+          const done = () => resolve();
+          const timeoutId = setTimeout(done, 3000);
+          s.onload = () => {
+            clearTimeout(timeoutId);
+            done();
+          };
+          s.onerror = () => {
+            clearTimeout(timeoutId);
+            done();
+          };
+
+          container.appendChild(s);
+        })
+    );
+
+    return () => {
+      cancelled = true;
+    };
+  }, [adKey, width, height]);
+
+  return (
+    <div
+      ref={containerRef}
+      style={{
+        width,
+        height,
+        margin: '0.5rem auto',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        overflow: 'hidden'
+      }}
+    />
+  );
+}
 
 function App() {
   const [currentPage, setCurrentPage] = useState('home');
@@ -152,6 +269,14 @@ function App() {
 
   return (
     <div className={`app-container ${userData.mode === 'football' ? 'theme-football' : ''}`}>
+      {/* Social bar (global) */}
+      <ScriptTag src="https://pl28898581.effectivegatecpm.com/27/b2/44/27b244a27efdef8cdcfed8a6489a22a5.js" />
+
+      {/* Top banner 468x60 */}
+      <div style={{ display: 'flex', justifyContent: 'center', padding: '0.5rem 0' }}>
+        <AtIframeBanner adKey="bbee66b578bab2bab6b8c7b4a0ff710f" width={468} height={60} />
+      </div>
+
       {currentPage === 'room' && (
         <header className="room-header">
           <button className="back-btn" onClick={leaveRoom}>
@@ -207,14 +332,6 @@ function App() {
                     onClick={async () => {
                       // Set isAuctionOver so all users see the final squads screen
                       await update(ref(db, `rooms/${userData.roomId}/auctionState`), { isAuctionOver: true, timer: 0 });
-
-                      // Fire popunder ONCE per session on End Game
-                      if (!sessionStorage.getItem('popunder_shown')) {
-                        sessionStorage.setItem('popunder_shown', '1');
-                        const s = document.createElement('script');
-                        s.src = 'https://pl28898559.effectivegatecpm.com/8b/9d/dd/8b9ddde4c257b50088dda2a41649c61c.js';
-                        document.body.appendChild(s);
-                      }
                     }}
                   >
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><circle cx="12" cy="12" r="3"></circle></svg> End
@@ -227,20 +344,60 @@ function App() {
       )}
 
       {currentPage === 'home' ? (
-        <Home
-          userData={userData}
-          setUserData={setUserData}
-          onJoin={() => setCurrentPage('room')}
-        />
+        <>
+          <Home
+            userData={userData}
+            setUserData={setUserData}
+            onJoin={() => setCurrentPage('room')}
+          />
+
+          {/* Native banner (home) */}
+          <div style={{ padding: '0.75rem 0', display: 'flex', justifyContent: 'center' }}>
+            <NativeBanner />
+          </div>
+        </>
       ) : (
         <main className="main-content">
           {currentPage === 'room' ? (
-            <Room userData={userData} setUserData={setUserData} isHost={isHost} />
+            <>
+              <Room userData={userData} setUserData={setUserData} isHost={isHost} />
+
+              {/* Native banner (room) */}
+              <div style={{ padding: '0.75rem 0', display: 'flex', justifyContent: 'center' }}>
+                <NativeBanner />
+              </div>
+            </>
           ) : (
-            <Auction userData={userData} onEnd={handleEndRoom} />
+            <>
+              <Auction userData={userData} onEnd={handleEndRoom} />
+
+              {/* Native banner (auction) */}
+              <div style={{ padding: '0.75rem 0', display: 'flex', justifyContent: 'center' }}>
+                <NativeBanner />
+              </div>
+            </>
           )}
         </main>
       )}
+
+      {/* Bottom sticky 320x50 (mobile) */}
+      <div
+        style={{
+          position: 'fixed',
+          left: 0,
+          right: 0,
+          bottom: 0,
+          zIndex: 9999,
+          display: 'flex',
+          justifyContent: 'center',
+          padding: '6px 0',
+          pointerEvents: 'none'
+        }}
+      >
+        <div style={{ pointerEvents: 'auto' }}>
+          <AtIframeBanner adKey="537b7057e12f7e23c1b3b271192e137f" width={320} height={50} />
+        </div>
+      </div>
     </div>
   );
 }
