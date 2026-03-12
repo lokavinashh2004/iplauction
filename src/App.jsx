@@ -358,25 +358,18 @@ function App() {
         </>
       ) : (
         <main className="main-content">
-          {currentPage === 'room' ? (
-            <>
+          <div style={{ width: '100%', display: 'flex', flexDirection: 'column' }}>
+            {currentPage === 'room' ? (
               <Room userData={userData} setUserData={setUserData} isHost={isHost} />
-
-              {/* Native banner (room) */}
-              <div style={{ padding: '0.75rem 0', display: 'flex', justifyContent: 'center' }}>
-                <NativeBanner />
-              </div>
-            </>
-          ) : (
-            <>
+            ) : (
               <Auction userData={userData} onEnd={handleEndRoom} />
+            )}
 
-              {/* Native banner (auction) */}
-              <div style={{ padding: '0.75rem 0', display: 'flex', justifyContent: 'center' }}>
-                <NativeBanner />
-              </div>
-            </>
-          )}
+            {/* Native banner (below content; avoids rendering as a flex-side column) */}
+            <div style={{ padding: '0.75rem 0', display: 'flex', justifyContent: 'center' }}>
+              <NativeBanner />
+            </div>
+          </div>
         </main>
       )}
 
