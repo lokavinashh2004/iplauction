@@ -154,6 +154,215 @@ export default function Auction({ userData, onEnd }) {
     const [statsActiveTab, setStatsActiveTab] = useState('upcoming');
     const [selectedSquadTeam, setSelectedSquadTeam] = useState(null);
 
+    // Select Playing XI (local-only; does not modify Firebase squads)
+    const [playingXIIds, setPlayingXIIds] = useState([]);
+    const [impactPlayerIds, setImpactPlayerIds] = useState([]);
+    const [xiWarning, setXiWarning] = useState('');
+    const [generatedTeamText, setGeneratedTeamText] = useState('');
+
+    const xiStorageKey = userData?.roomId && userData?.team ? `playing_xi_${userData.roomId}_${userData.team}` : null;
+    const normalizePlayerId = (p) => String(p?.id ?? p?.name ?? '');
+
+    useEffect(() => {
+        if (!xiStorageKey) return;
+        try {
+            const raw = localStorage.getItem(xiStorageKey);
+            if (!raw) {
+                setPlayingXIIds([]);
+                setImpactPlayerIds([]);
+                return;
+            }
+            const parsed = JSON.parse(raw);
+            setPlayingXIIds(Array.isArray(parsed?.xi) ? parsed.xi : []);
+            setImpactPlayerIds(Array.isArray(parsed?.impact) ? parsed.impact : []);
+        } catch {
+            setPlayingXIIds([]);
+            setImpactPlayerIds([]);
+        }
+    }, [xiStorageKey]);
+
+    useEffect(() => {
+        if (!xiStorageKey) return;
+        try {
+            localStorage.setItem(xiStorageKey, JSON.stringify({ xi: playingXIIds, impact: impactPlayerIds }));
+        } catch {
+            // ignore storage issues
+        }
+    }, [xiStorageKey, playingXIIds, impactPlayerIds]);
+
+    useEffect(() => {
+        if (!xiWarning) return;
+        const t = setTimeout(() => setXiWarning(''), 2200);
+        return () => clearTimeout(t);
+    }, [xiWarning]);
+
+    const addToXI = (playerId) => {
+        if (!playerId) return;
+        if (playingXIIds.includes(playerId)) return;
+        if (playingXIIds.length >= 11) {
+            setXiWarning('Maximum 11 players allowed in Playing XI.');
+            return;
+        }
+        if (impactPlayerIds.includes(playerId)) {
+            setXiWarning('A player cannot be in both Playing XI and Impact Players.');
+            return;
+        }
+        setPlayingXIIds(prev => [...prev, playerId]);
+    };
+
+    const addToImpact = (playerId) => {
+        if (!playerId) return;
+        if (impactPlayerIds.includes(playerId)) return;
+        if (impactPlayerIds.length >= 4) {
+            setXiWarning('Maximum 4 players allowed in Impact Players.');
+            return;
+        }
+        if (playingXIIds.includes(playerId)) {
+            setXiWarning('A player cannot be in both Playing XI and Impact Players.');
+            return;
+        }
+        setImpactPlayerIds(prev => [...prev, playerId]);
+    };
+
+    const removeFromXI = (playerId) => setPlayingXIIds(prev => prev.filter(id => id !== playerId));
+    const removeFromImpact = (playerId) => setImpactPlayerIds(prev => prev.filter(id => id !== playerId));
+
+    const buildTeamText = (teamCode, xiPlayers, impactPlayers, includeEmojiHeader) => {
+        const lines = [];
+        lines.push(includeEmojiHeader ? `🏏 My IPL Auction Team – ${teamCode}` : `${teamCode} Playing XI`);
+        lines.push('');
+        lines.push('Playing XI');
+        lines.push('');
+        xiPlayers.forEach((p, idx) => lines.push(`${idx + 1}. ${p.name}`));
+        lines.push('');
+        lines.push('Impact Players');
+        lines.push('');
+        impactPlayers.forEach((p, idx) => lines.push(`${idx + 1}. ${p.name}`));
+        if (includeEmojiHeader) {
+            lines.push('');
+            lines.push('Built using IPL Auction Simulator');
+        }
+        return lines.join('\n');
+    };
+
+    const handleGenerateTeamSheet = (teamCode, squad) => {
+        const byId = new Map(squad.map(p => [normalizePlayerId(p), p]));
+        const xiPlayers = playingXIIds.map(id => byId.get(id)).filter(Boolean);
+        const impactPlayers = impactPlayerIds.map(id => byId.get(id)).filter(Boolean);
+        if (xiPlayers.length === 0 && impactPlayers.length === 0) {
+            setXiWarning('Select players first to generate the team sheet.');
+            return;
+        }
+        const text = buildTeamText(teamCode, xiPlayers, impactPlayers, false);
+        setGeneratedTeamText(text);
+    };
+
+    const handleShareTeam = async (teamCode, squad) => {
+        const byId = new Map(squad.map(p => [normalizePlayerId(p), p]));
+        const xiPlayers = playingXIIds.map(id => byId.get(id)).filter(Boolean);
+        const impactPlayers = impactPlayerIds.map(id => byId.get(id)).filter(Boolean);
+        if (xiPlayers.length === 0 && impactPlayers.length === 0) {
+            setXiWarning('Select players first to share.');
+            return;
+        }
+        const shareText = buildTeamText(teamCode, xiPlayers, impactPlayers, true);
+        if (navigator.share) {
+            try {
+                await navigator.share({
+                    title: 'My IPL Auction Team',
+                    text: shareText,
+                    url: window.location.href
+                });
+                return;
+            } catch {
+                // fall through to copy
+            }
+        }
+        try {
+            await navigator.clipboard?.writeText(shareText);
+            setXiWarning('Copied share text to clipboard.');
+        } catch {
+            setGeneratedTeamText(shareText);
+            setXiWarning('Share not available. Text is shown below.');
+        }
+    };
+
+    const handleDownloadTeamImage = (teamCode, squad) => {
+        const byId = new Map(squad.map(p => [normalizePlayerId(p), p]));
+        const xiPlayers = playingXIIds.map(id => byId.get(id)).filter(Boolean);
+        const impactPlayers = impactPlayerIds.map(id => byId.get(id)).filter(Boolean);
+        if (xiPlayers.length === 0 && impactPlayers.length === 0) {
+            setXiWarning('Select players first to download an image.');
+            return;
+        }
+
+        const canvas = document.createElement('canvas');
+        const W = 1080;
+        const H = 1350;
+        canvas.width = W;
+        canvas.height = H;
+        const ctx = canvas.getContext('2d');
+        if (!ctx) return;
+
+        const grd = ctx.createLinearGradient(0, 0, 0, H);
+        grd.addColorStop(0, '#05070c');
+        grd.addColorStop(0.5, '#070b13');
+        grd.addColorStop(1, '#05070c');
+        ctx.fillStyle = grd;
+        ctx.fillRect(0, 0, W, H);
+
+        ctx.fillStyle = 'rgba(255, 179, 0, 0.10)';
+        ctx.beginPath();
+        ctx.ellipse(W / 2, 220, 520, 220, 0, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.textAlign = 'center';
+        ctx.fillStyle = '#ffb300';
+        ctx.font = '900 64px Inter, system-ui, Arial';
+        ctx.fillText('IPL AUCTION 2026', W / 2, 140);
+
+        ctx.fillStyle = 'rgba(255,255,255,0.92)';
+        ctx.font = '800 46px Inter, system-ui, Arial';
+        ctx.fillText(teamCode, W / 2, 210);
+
+        const drawSection = (title, items, x, startY) => {
+            let yy = startY;
+            ctx.textAlign = 'left';
+            ctx.fillStyle = '#ffb300';
+            ctx.font = '900 34px Inter, system-ui, Arial';
+            ctx.fillText(title, x, yy);
+            yy += 26;
+            ctx.strokeStyle = 'rgba(255,179,0,0.35)';
+            ctx.lineWidth = 3;
+            ctx.beginPath();
+            ctx.moveTo(x, yy);
+            ctx.lineTo(x + 380, yy);
+            ctx.stroke();
+            yy += 40;
+            ctx.fillStyle = 'rgba(255,255,255,0.92)';
+            ctx.font = '700 30px Inter, system-ui, Arial';
+            items.forEach((p, idx) => {
+                ctx.fillText(`${idx + 1}. ${p.name}`, x, yy);
+                yy += 44;
+            });
+            return yy;
+        };
+
+        const y0 = 300;
+        drawSection('Playing XI', xiPlayers.slice(0, 11), 110, y0);
+        drawSection('Impact Players', impactPlayers.slice(0, 4), 600, y0);
+
+        ctx.textAlign = 'center';
+        ctx.fillStyle = 'rgba(255,255,255,0.55)';
+        ctx.font = '600 24px Inter, system-ui, Arial';
+        ctx.fillText('Built using IPL Auction Simulator', W / 2, H - 70);
+
+        const a = document.createElement('a');
+        a.download = `${teamCode}_team_sheet.png`;
+        a.href = canvas.toDataURL('image/png');
+        a.click();
+    };
+
     useEffect(() => {
         if (!userData?.roomId) return;
         const key = `auction_intro_shown_${userData.roomId}`;
@@ -651,6 +860,11 @@ export default function Auction({ userData, onEnd }) {
             Object.values(roomUsers).some(u => u.team === t)
         );
         const allTeams = Object.keys(TEAM_COLORS);
+        const myTeam = userData?.team;
+        const mySquad = myTeam ? (allSquads[myTeam] || []) : [];
+        const myById = new Map(mySquad.map(p => [normalizePlayerId(p), p]));
+        const myXIPlayers = playingXIIds.map(id => myById.get(id)).filter(Boolean);
+        const myImpactPlayers = impactPlayerIds.map(id => myById.get(id)).filter(Boolean);
 
         return (
             <div style={{ width: '100%', minHeight: '100vh', background: 'linear-gradient(180deg, #0a0a0f 0%, #0d1117 100%)', paddingBottom: '3rem' }}>
@@ -675,6 +889,175 @@ export default function Auction({ userData, onEnd }) {
                         </button>
                     )}
                 </div>
+
+                {/* Select Playing XI */}
+                {myTeam && (
+                    <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '1.5rem 1rem 0' }}>
+                        <div style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,179,0,0.18)', borderRadius: '12px', overflow: 'hidden' }}>
+                            <div style={{ padding: '1rem 1rem', borderBottom: '1px solid rgba(255,255,255,0.08)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '1rem', flexWrap: 'wrap' }}>
+                                <div>
+                                    <div style={{ fontSize: '0.75rem', letterSpacing: '3px', color: '#ffb300', fontWeight: 800, textTransform: 'uppercase' }}>Select Playing XI</div>
+                                    <div style={{ marginTop: '0.25rem', fontSize: '1.1rem', fontWeight: 900, color: '#fff' }}>{myTeam} • {TEAM_FULL_NAMES[myTeam]}</div>
+                                </div>
+                                <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+                                    <button
+                                        className="btn-solid-orange"
+                                        style={{ padding: '0.55rem 1rem', fontWeight: 900 }}
+                                        onClick={() => handleGenerateTeamSheet(myTeam, mySquad)}
+                                    >
+                                        Generate Team Sheet
+                                    </button>
+                                    <button
+                                        className="btn-outline-yellow"
+                                        style={{ padding: '0.55rem 1rem', fontWeight: 900 }}
+                                        onClick={() => handleShareTeam(myTeam, mySquad)}
+                                    >
+                                        Share Team
+                                    </button>
+                                    <button
+                                        className="btn-outline-yellow"
+                                        style={{ padding: '0.55rem 1rem', fontWeight: 900 }}
+                                        onClick={() => handleDownloadTeamImage(myTeam, mySquad)}
+                                    >
+                                        Download Image
+                                    </button>
+                                </div>
+                            </div>
+
+                            {xiWarning && (
+                                <div style={{ padding: '0.75rem 1rem', background: 'rgba(245, 158, 11, 0.12)', borderBottom: '1px solid rgba(245, 158, 11, 0.25)', color: '#ffb300', fontWeight: 800 }}>
+                                    {xiWarning}
+                                </div>
+                            )}
+
+                            <div style={{ padding: '1rem', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '1rem' }}>
+                                <div style={{ background: 'rgba(0,0,0,0.25)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '10px', padding: '0.9rem' }}>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
+                                        <div style={{ color: '#fff', fontWeight: 900 }}>Playing XI</div>
+                                        <div style={{ color: 'rgba(255,255,255,0.55)', fontSize: '0.85rem', fontWeight: 800 }}>{myXIPlayers.length}/11</div>
+                                    </div>
+                                    <div style={{ marginTop: '0.6rem', display: 'grid', gap: '0.5rem' }}>
+                                        {Array.from({ length: 11 }).map((_, idx) => {
+                                            const p = myXIPlayers[idx];
+                                            return (
+                                                <div key={idx} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.75rem', padding: '0.55rem 0.7rem', borderRadius: '8px', border: '1px dashed rgba(255,179,0,0.25)', background: 'rgba(255,179,0,0.06)' }}>
+                                                    <div style={{ minWidth: 0 }}>
+                                                        <div style={{ color: p ? '#fff' : 'rgba(255,255,255,0.35)', fontWeight: 900, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                                            {p ? `${idx + 1}. ${p.name}` : `${idx + 1}. Empty slot`}
+                                                        </div>
+                                                    </div>
+                                                    {p && (
+                                                        <button className="btn-outline-red" style={{ padding: '0.35rem 0.6rem', fontWeight: 900 }} onClick={() => removeFromXI(normalizePlayerId(p))}>
+                                                            Remove
+                                                        </button>
+                                                    )}
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+                                </div>
+
+                                <div style={{ background: 'rgba(0,0,0,0.25)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '10px', padding: '0.9rem' }}>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
+                                        <div style={{ color: '#fff', fontWeight: 900 }}>Impact Players</div>
+                                        <div style={{ color: 'rgba(255,255,255,0.55)', fontSize: '0.85rem', fontWeight: 800 }}>{myImpactPlayers.length}/4</div>
+                                    </div>
+                                    <div style={{ marginTop: '0.6rem', display: 'grid', gap: '0.5rem' }}>
+                                        {Array.from({ length: 4 }).map((_, idx) => {
+                                            const p = myImpactPlayers[idx];
+                                            return (
+                                                <div key={idx} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.75rem', padding: '0.55rem 0.7rem', borderRadius: '8px', border: '1px dashed rgba(255,179,0,0.25)', background: 'rgba(255,179,0,0.06)' }}>
+                                                    <div style={{ minWidth: 0 }}>
+                                                        <div style={{ color: p ? '#fff' : 'rgba(255,255,255,0.35)', fontWeight: 900, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                                            {p ? `${idx + 1}. ${p.name}` : `${idx + 1}. Empty slot`}
+                                                        </div>
+                                                    </div>
+                                                    {p && (
+                                                        <button className="btn-outline-red" style={{ padding: '0.35rem 0.6rem', fontWeight: 900 }} onClick={() => removeFromImpact(normalizePlayerId(p))}>
+                                                            Remove
+                                                        </button>
+                                                    )}
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+                                </div>
+
+                                <div style={{ background: 'rgba(0,0,0,0.25)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '10px', padding: '0.9rem' }}>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
+                                        <div style={{ color: '#fff', fontWeight: 900 }}>Squad List</div>
+                                        <div style={{ color: 'rgba(255,255,255,0.55)', fontSize: '0.85rem', fontWeight: 800 }}>{mySquad.length} players</div>
+                                    </div>
+                                    <div style={{ marginTop: '0.6rem', display: 'grid', gap: '0.55rem', maxHeight: '420px', overflowY: 'auto', paddingRight: '0.25rem' }}>
+                                        {mySquad.length === 0 ? (
+                                            <div style={{ color: 'rgba(255,255,255,0.35)', padding: '1rem 0', textAlign: 'center', fontWeight: 700 }}>No players in your squad.</div>
+                                        ) : (
+                                            mySquad.map((p) => {
+                                                const pid = normalizePlayerId(p);
+                                                const inXI = playingXIIds.includes(pid);
+                                                const inImpact = impactPlayerIds.includes(pid);
+                                                return (
+                                                    <div key={pid} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.75rem', padding: '0.6rem 0.7rem', borderRadius: '10px', border: '1px solid rgba(255,255,255,0.08)', background: 'rgba(255,255,255,0.02)' }}>
+                                                        <div style={{ minWidth: 0 }}>
+                                                            <div style={{ color: '#fff', fontWeight: 900, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{p.name}</div>
+                                                            <div style={{ marginTop: '2px', fontSize: '0.78rem', color: 'rgba(255,255,255,0.55)', display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+                                                                {p.role && <span style={{ background: 'rgba(255,179,0,0.10)', border: '1px solid rgba(255,179,0,0.18)', color: '#ffb300', padding: '2px 8px', borderRadius: '999px', fontWeight: 800 }}>{p.role}</span>}
+                                                                {p.country && p.country !== 'IND' && <span style={{ background: 'rgba(239,68,68,0.12)', border: '1px solid rgba(239,68,68,0.22)', color: '#fecaca', padding: '2px 8px', borderRadius: '999px', fontWeight: 800 }}>Overseas</span>}
+                                                            </div>
+                                                        </div>
+                                                        <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+                                                            {!inXI ? (
+                                                                <button className="btn-solid-orange" style={{ padding: '0.4rem 0.65rem', fontWeight: 900 }} onClick={() => addToXI(pid)}>
+                                                                    Select for XI
+                                                                </button>
+                                                            ) : (
+                                                                <button className="btn-outline-red" style={{ padding: '0.4rem 0.65rem', fontWeight: 900 }} onClick={() => removeFromXI(pid)}>
+                                                                    Remove XI
+                                                                </button>
+                                                            )}
+                                                            {!inImpact ? (
+                                                                <button className="btn-outline-yellow" style={{ padding: '0.4rem 0.65rem', fontWeight: 900 }} onClick={() => addToImpact(pid)}>
+                                                                    Select as Impact
+                                                                </button>
+                                                            ) : (
+                                                                <button className="btn-outline-red" style={{ padding: '0.4rem 0.65rem', fontWeight: 900 }} onClick={() => removeFromImpact(pid)}>
+                                                                    Remove Impact
+                                                                </button>
+                                                            )}
+                                                        </div>
+                                                    </div>
+                                                );
+                                            })
+                                        )}
+                                    </div>
+                                </div>
+                            </div>
+
+                            {generatedTeamText && (
+                                <div style={{ padding: '0 1rem 1rem' }}>
+                                    <div style={{ color: 'rgba(255,255,255,0.7)', fontWeight: 800, marginBottom: '0.5rem' }}>Generated Team Sheet</div>
+                                    <textarea
+                                        value={generatedTeamText}
+                                        readOnly
+                                        rows={10}
+                                        style={{
+                                            width: '100%',
+                                            background: 'rgba(0,0,0,0.35)',
+                                            border: '1px solid rgba(255,255,255,0.12)',
+                                            color: 'rgba(255,255,255,0.9)',
+                                            borderRadius: '10px',
+                                            padding: '0.8rem',
+                                            fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, \"Liberation Mono\", \"Courier New\", monospace',
+                                            fontSize: '0.9rem',
+                                            outline: 'none',
+                                            resize: 'vertical'
+                                        }}
+                                    />
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                )}
 
                 {/* Team Cards Grid */}
                 <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '1.5rem 1rem', display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '1rem' }}>
