@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react';
-import { BannerAd468 } from './AdBanner';
+import { useState, useEffect, useRef } from 'react';
+import { BannerAd468, NativeBannerAd } from './AdBanner';
 import { db } from './firebase';
 import { ref, set, onValue, onDisconnect, get } from 'firebase/database';
 
@@ -28,6 +28,7 @@ export default function Home({ userData, setUserData, onJoin }) {
     const [viewMode, setViewMode] = useState(() => (userData.roomId ? 'join' : 'select'));
     const [joinRoomId, setJoinRoomId] = useState(userData.roomId || '');
     const [takenTeams, setTakenTeams] = useState([]);
+    const [bannerDismissed, setBannerDismissed] = useState(false);
 
     useEffect(() => {
         if (!joinRoomId) { setTakenTeams([]); return; }
@@ -114,6 +115,22 @@ export default function Home({ userData, setUserData, onJoin }) {
                     </button>
                 </div>
             </div>
+
+            {/* ── Sticky bottom banner ad on hero (dismissible) ── */}
+            {!bannerDismissed && (
+                <div className="home-hero-banner-ad">
+                    <div className="home-hero-banner-ad-inner">
+                        <NativeBannerAd />
+                    </div>
+                    <button
+                        className="home-hero-banner-close"
+                        onClick={() => setBannerDismissed(true)}
+                        aria-label="Close ad"
+                    >
+                        ✕
+                    </button>
+                </div>
+            )}
 
             {/* ── CREATE ROOM form ── */}
             {viewMode === 'create' && (
