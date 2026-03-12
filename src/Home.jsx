@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { ResponsiveAdBanner, NativeAdBanner } from './AdBanner';
+import { ResponsiveAdBanner } from './AdBanner';
 import { db } from './firebase';
 import { ref, set, onValue, onDisconnect, get } from 'firebase/database';
 
@@ -120,9 +120,6 @@ export default function Home({ userData, setUserData, onJoin }) {
             {/* ── CREATE ROOM form ── */}
             {viewMode === 'create' && (
                 <div className="home-form-overlay animate-fade-in">
-                    {/* Top Native Ad for Mobile View - Placed above the main card */}
-                    <NativeAdBanner />
-                    
                     <div className="home-form-card">
                         <div className="home-form-header">
                             <button className="home-back-btn" onClick={() => setViewMode('select')}>
