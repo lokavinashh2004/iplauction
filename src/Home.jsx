@@ -90,7 +90,7 @@ export default function Home({ userData, setUserData, onJoin }) {
                 {/* Player List Banner */}
                 <div className="home-list-badge animate-fade-in">
                     <span style={{ color: '#f59e0b' }}>🔥</span>
-                    <span>2026 Official List • 350 Players</span>
+                    <span>2026 Official List • 620 Players</span>
                 </div>
 
                 {/* Buttons */}

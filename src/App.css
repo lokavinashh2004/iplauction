@@ -2375,3 +2375,136 @@
   opacity: 0;
   animation: set-subtitle-in 0.45s 1.3s ease-out forwards;
 }
+
+/* ── Auction Start Intro Overlay (4s) ── */
+
+@keyframes auction-intro-overlay {
+  0% { opacity: 1; }
+  75% { opacity: 1; }
+  100% { opacity: 0; }
+}
+
+@keyframes auction-intro-title {
+  0% { opacity: 0; transform: scale(0.9); filter: blur(2px); }
+  35% { opacity: 1; transform: scale(1.04); filter: blur(0); }
+  100% { opacity: 1; transform: scale(1); }
+}
+
+@keyframes auction-intro-subtitle {
+  0% { opacity: 0; transform: translateY(10px) scale(0.98); }
+  100% { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+@keyframes auction-intro-beam-sweep {
+  0% { opacity: 0; transform: translateX(-30vw) rotate(18deg); }
+  15% { opacity: 0.65; }
+  85% { opacity: 0.65; }
+  100% { opacity: 0; transform: translateX(30vw) rotate(18deg); }
+}
+
+@keyframes auction-intro-spotlights-fade {
+  0% { opacity: 0; }
+  12% { opacity: 1; }
+  88% { opacity: 1; }
+  100% { opacity: 0; }
+}
+
+#auction-intro.auction-intro-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 20000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  background: #05070c;
+  animation: auction-intro-overlay 4s ease-in-out both;
+}
+
+.auction-intro-bg {
+  position: absolute;
+  inset: -40px;
+  background:
+    radial-gradient(1200px 700px at 50% 25%, rgba(255, 179, 0, 0.14), transparent 60%),
+    radial-gradient(900px 600px at 20% 60%, rgba(255, 152, 0, 0.08), transparent 55%),
+    radial-gradient(900px 600px at 80% 60%, rgba(255, 152, 0, 0.06), transparent 55%),
+    radial-gradient(1000px 600px at 50% 120%, rgba(0, 0, 0, 0.85), rgba(0, 0, 0, 1) 65%),
+    linear-gradient(180deg, #05070c 0%, #070b13 35%, #05070c 100%);
+  filter: saturate(1.05) contrast(1.05);
+}
+
+.auction-intro-vignette {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(circle at 50% 45%, transparent 0%, rgba(0, 0, 0, 0.55) 62%, rgba(0, 0, 0, 0.92) 100%);
+}
+
+.auction-intro-spotlights {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0;
+  animation: auction-intro-spotlights-fade 2s ease-in-out 1s both;
+}
+
+.auction-intro-beam {
+  position: absolute;
+  top: -20%;
+  left: 50%;
+  width: 55vw;
+  height: 150vh;
+  transform-origin: top center;
+  background: linear-gradient(180deg, rgba(255, 179, 0, 0.0) 0%, rgba(255, 179, 0, 0.28) 35%, rgba(255, 179, 0, 0.0) 80%);
+  filter: blur(1px);
+  mix-blend-mode: screen;
+  opacity: 0;
+  transform: translateX(-30vw) rotate(18deg);
+  animation: auction-intro-beam-sweep 2s ease-in-out 1s both;
+}
+
+.auction-intro-beam.beam-2 {
+  width: 48vw;
+  transform: translateX(30vw) rotate(-18deg);
+  animation-delay: 1.1s;
+  animation-direction: reverse;
+}
+
+.auction-intro-beam.beam-3 {
+  width: 42vw;
+  transform: translateX(-22vw) rotate(10deg);
+  animation-delay: 1.25s;
+}
+
+.auction-intro-center {
+  position: relative;
+  z-index: 2;
+  text-align: center;
+  padding: 0 1.25rem;
+  max-width: 900px;
+}
+
+.auction-intro-title {
+  font-weight: 900;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: #ffb300;
+  text-shadow:
+    0 0 10px rgba(255, 179, 0, 0.35),
+    0 0 22px rgba(255, 152, 0, 0.28),
+    0 10px 40px rgba(0, 0, 0, 0.6);
+  font-size: clamp(28px, 5vw, 56px);
+  opacity: 0;
+  animation: auction-intro-title 0.9s cubic-bezier(0.16, 1, 0.3, 1) 0.05s both;
+}
+
+.auction-intro-subtitle {
+  margin-top: 14px;
+  font-weight: 800;
+  letter-spacing: 1.2px;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.92);
+  text-shadow: 0 0 18px rgba(255, 179, 0, 0.18);
+  font-size: clamp(14px, 2.7vw, 22px);
+  opacity: 0;
+  animation: auction-intro-subtitle 0.7s ease-out 2s both;
+}

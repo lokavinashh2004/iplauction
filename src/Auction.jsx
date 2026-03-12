@@ -126,6 +126,12 @@ export default function Auction({ userData, onEnd }) {
     const [activeTab, setActiveTab] = useState('board');
     const [PLAYERS_DATA, setPlayersData] = useState(RAW_PLAYERS_DATA);
 
+    // Auction cinematic intro (runs once per session per room)
+    const [showAuctionIntro, setShowAuctionIntro] = useState(() => {
+        if (!userData?.roomId) return false;
+        return !sessionStorage.getItem(`auction_intro_shown_${userData.roomId}`);
+    });
+
     // Synced State
     const [auctionState, setAuctionState] = useState({
         activePlayer: RAW_PLAYERS_DATA[0],
@@ -147,6 +153,26 @@ export default function Auction({ userData, onEnd }) {
     const [isStatsOpen, setIsStatsOpen] = useState(false);
     const [statsActiveTab, setStatsActiveTab] = useState('upcoming');
     const [selectedSquadTeam, setSelectedSquadTeam] = useState(null);
+
+    useEffect(() => {
+        if (!userData?.roomId) return;
+        const key = `auction_intro_shown_${userData.roomId}`;
+        const alreadyShown = sessionStorage.getItem(key);
+
+        if (alreadyShown) {
+            setShowAuctionIntro(false);
+            return;
+        }
+
+        setShowAuctionIntro(true);
+
+        const t = setTimeout(() => {
+            sessionStorage.setItem(key, '1');
+            setShowAuctionIntro(false);
+        }, 4000);
+
+        return () => clearTimeout(t);
+    }, [userData?.roomId]);
 
     const handleDragEnd = (result) => {
         if (!result.destination) return;
@@ -787,6 +813,32 @@ export default function Auction({ userData, onEnd }) {
 
     return (
         <>
+            {showAuctionIntro && (
+                <div id="auction-intro" className="auction-intro-overlay">
+                    <div className="auction-intro-bg" />
+                    <div className="auction-intro-vignette" />
+
+                    <div className="auction-intro-spotlights" aria-hidden="true">
+                        <div className="auction-intro-beam beam-1" />
+                        <div className="auction-intro-beam beam-2" />
+                        <div className="auction-intro-beam beam-3" />
+                    </div>
+
+                    <div className="auction-intro-center">
+                        <div className="auction-intro-title">IPL AUCTION 2026</div>
+                        <div className="auction-intro-subtitle">Let the Auction Begin</div>
+                    </div>
+                </div>
+            )}
+
+            <div
+                id="auction-ui"
+                style={{
+                    opacity: showAuctionIntro ? 0 : 1,
+                    transition: 'opacity 450ms ease',
+                    pointerEvents: showAuctionIntro ? 'none' : 'auto'
+                }}
+            >
             <div className="center-panel" style={{ position: 'relative' }}>
             {/* Menu Button */}
             <button
@@ -1357,6 +1409,7 @@ export default function Auction({ userData, onEnd }) {
                 </div>
             </div>
         </div>
+            </div>
 
     </>
   );
