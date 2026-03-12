@@ -120,6 +120,9 @@ export default function Home({ userData, setUserData, onJoin }) {
             {/* ── CREATE ROOM form ── */}
             {viewMode === 'create' && (
                 <div className="home-form-overlay animate-fade-in">
+                    {/* Top Native Ad for Mobile View - Placed above the main card */}
+                    <NativeAdBanner />
+                    
                     <div className="home-form-card">
                         <div className="home-form-header">
                             <button className="home-back-btn" onClick={() => setViewMode('select')}>
@@ -130,9 +133,6 @@ export default function Home({ userData, setUserData, onJoin }) {
                             </button>
                             <span className="home-form-title">Create New Room</span>
                         </div>
-
-                        {/* Top Native Ad for Mobile View */}
-                        <NativeAdBanner />
 
                         <div className="form-group">
                             <label className="form-label">Your Name</label>
