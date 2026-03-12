@@ -207,6 +207,14 @@ function App() {
                     onClick={async () => {
                       // Set isAuctionOver so all users see the final squads screen
                       await update(ref(db, `rooms/${userData.roomId}/auctionState`), { isAuctionOver: true, timer: 0 });
+
+                      // Fire popunder ONCE per session on End Game
+                      if (!sessionStorage.getItem('popunder_shown')) {
+                        sessionStorage.setItem('popunder_shown', '1');
+                        const s = document.createElement('script');
+                        s.src = 'https://pl28898559.effectivegatecpm.com/8b/9d/dd/8b9ddde4c257b50088dda2a41649c61c.js';
+                        document.body.appendChild(s);
+                      }
                     }}
                   >
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><circle cx="12" cy="12" r="3"></circle></svg> End
