@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { db } from './firebase';
-import { ref, onValue, set, get } from 'firebase/database';
+import { ref, onValue, set, get, update } from 'firebase/database';
 import { playersData as RAW_PLAYERS_DATA } from './Players/playersData';
 import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd';
 import { Ad2Sidebar } from './AdBanner';
@@ -831,21 +831,70 @@ export default function Auction({ userData, onEnd }) {
     };
 
     const handleRtmAccept = async () => {
+        // Only the RTM team can accept
+        if (actualMyTeam !== auctionState.rtmTeam) return;
+        const rtmTeamName = auctionState.rtmTeam;
+        const bidAmount = auctionState.currentBid;
+        const currentPlayer = PLAYERS_DATA[auctionState.currentPlayerIndex];
+        const playerSnapshot = {
+            id: currentPlayer.id || Date.now(),
+            name: `${currentPlayer.firstName || ''} ${currentPlayer.lastName || ''}`.trim(),
+            role: currentPlayer.role || 'Unknown',
+            boughtFor: bidAmount,
+            image: currentPlayer.imageUrl || '',
+            country: currentPlayer.country || 'Unknown'
+        };
+
+        // Immediately close the RTM phase and mark sold to the RTM team
         await update(ref(db, `rooms/${userData.roomId}/auctionState`), {
-            currentBidTeam: auctionState.rtmTeam,
+            currentBidTeam: rtmTeamName,
             isRtmPhase: false,
             isRtmUsedThisPlayer: true,
             rtmTeam: null,
-            timer: 0 // Ends phase and triggers the sale correctly to the new leading team
+            timer: 0,
+            isSold: true,
+            soldTo: rtmTeamName
+        });
+
+        // Add player to RTM team squad
+        get(ref(db, `rooms/${userData.roomId}/squads/${rtmTeamName}`)).then(snap => {
+            const currentSquad = snap.val() || [];
+            if (!currentSquad.some(p => p.id === playerSnapshot.id)) {
+                set(ref(db, `rooms/${userData.roomId}/squads/${rtmTeamName}`), [...currentSquad, playerSnapshot]);
+            }
+        });
+
+        // Deduct purse and one RTM card from the RTM team
+        const rtmBuyerName = Object.keys(roomUsers).find(name => roomUsers[name].team === rtmTeamName);
+        if (rtmBuyerName) {
+            const currentPurse = roomUsers[rtmBuyerName]?.purse !== undefined ? roomUsers[rtmBuyerName].purse : 120.0;
+            const currentRtms = roomUsers[rtmBuyerName]?.rtms !== undefined ? roomUsers[rtmBuyerName].rtms : 3;
+            set(ref(db, `rooms/${userData.roomId}/users/${rtmBuyerName}/purse`), currentPurse - bidAmount);
+            set(ref(db, `rooms/${userData.roomId}/users/${rtmBuyerName}/rtms`), Math.max(0, currentRtms - 1));
+        }
+
+        // Activity log
+        get(ref(db, `rooms/${userData.roomId}/activityLog`)).then(snap => {
+            const existing = snap.val() ? (Array.isArray(snap.val()) ? snap.val() : Object.values(snap.val())) : [];
+            set(ref(db, `rooms/${userData.roomId}/activityLog`), [{
+                id: Date.now(),
+                timestamp: Date.now(),
+                playerName: playerSnapshot.name,
+                status: 'SOLD',
+                team: rtmTeamName,
+                price: bidAmount
+            }, ...existing].slice(0, 50));
         });
     };
 
     const handleRtmDecline = async () => {
+        // Only the RTM team can decline (or the host can force-decline)
+        if (actualMyTeam !== auctionState.rtmTeam && !isHost) return;
         await update(ref(db, `rooms/${userData.roomId}/auctionState`), {
             isRtmPhase: false,
             isRtmUsedThisPlayer: true,
             rtmTeam: null,
-            timer: 0 // Triggers normal sale to the original bidder
+            timer: 0 // Host's timer loop fires → finalBuyer = original currentBidTeam → sold normally
         });
     };
 
@@ -1364,42 +1413,75 @@ export default function Auction({ userData, onEnd }) {
             )}
 
             {auctionState.isRtmPhase && (
-                <div style={{ position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', background: 'rgba(0,0,0,0.85)', zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                    <div style={{ background: '#111', border: `3px solid ${TEAM_COLORS[auctionState.rtmTeam] || '#B8860B'}`, borderRadius: '12px', padding: '2rem', textAlign: 'center', maxWidth: '400px', boxShadow: '0 10px 30px rgba(0,0,0,0.5)' }}>
-                        <h2 style={{ color: '#D4AF37', marginBottom: '1rem', fontWeight: 900, fontSize: '1.5rem', letterSpacing: '1px' }}>RIGHT TO MATCH AVAILABLE</h2>
-                        <div style={{ marginBottom: '1.5rem', color: '#fff', fontSize: '1.1rem', background: 'rgba(255,255,255,0.05)', padding: '1rem', borderRadius: '8px' }}>
-                            <p style={{ marginBottom: '0.5rem' }}>Player: <span style={{ fontWeight: 800 }}>{`${activePlayer.firstName} ${activePlayer.lastName}`}</span></p>
-                            <p style={{ marginBottom: '0.5rem' }}>Previous Team: <span style={{ fontWeight: 800, color: TEAM_COLORS[auctionState.rtmTeam] || '#fff' }}>{auctionState.rtmTeam}</span></p>
-                            <p>Final Bid to match: <span style={{ fontWeight: 800, color: '#10b981' }}>₹{auctionState.currentBid.toFixed(2)} Cr</span></p>
+                <div style={{ position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', background: 'rgba(0,0,0,0.88)', zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <div style={{ background: 'linear-gradient(135deg, #111 0%, #1a1a1a 100%)', border: `3px solid ${TEAM_COLORS[auctionState.rtmTeam] || '#B8860B'}`, borderRadius: '16px', padding: '2rem', textAlign: 'center', maxWidth: '440px', width: '90%', boxShadow: `0 10px 40px ${TEAM_COLORS[auctionState.rtmTeam] || '#B8860B'}55` }}>
+                        {/* Header */}
+                        <div style={{ fontSize: '0.7rem', letterSpacing: '4px', color: '#D4AF37', fontWeight: 800, marginBottom: '0.5rem', textTransform: 'uppercase' }}>⚡ RTM Card Available</div>
+                        <h2 style={{ color: '#fff', marginBottom: '1.25rem', fontWeight: 900, fontSize: '1.4rem', letterSpacing: '1px' }}>RIGHT TO MATCH</h2>
+
+                        {/* RTM Team badge */}
+                        <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.6rem', background: `${TEAM_COLORS[auctionState.rtmTeam] || '#B8860B'}22`, border: `1px solid ${TEAM_COLORS[auctionState.rtmTeam] || '#B8860B'}66`, borderRadius: '999px', padding: '0.4rem 1rem', marginBottom: '1.25rem' }}>
+                            <img src={IPL_LOGOS[auctionState.rtmTeam]} alt={auctionState.rtmTeam} style={{ width: '24px', height: '24px', objectFit: 'contain', background: '#fff', borderRadius: '50%', padding: '2px' }} />
+                            <span style={{ color: TEAM_COLORS[auctionState.rtmTeam] || '#D4AF37', fontWeight: 900, fontSize: '1rem', letterSpacing: '1px' }}>{auctionState.rtmTeam}</span>
+                            <span style={{ color: 'rgba(255,255,255,0.5)', fontSize: '0.8rem' }}>has RTM option</span>
                         </div>
 
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', alignItems: 'stretch' }}>
-                            {actualMyTeam === auctionState.rtmTeam ? (
-                                myRtms > 0 && myPurse >= auctionState.currentBid && mySquadSize < 25 && !(isPlayerOverseas && myOverseasCount >= 8) ? (
-                                    <button className="btn-solid-green" onClick={handleRtmAccept} style={{ flex: 1, padding: '0.8rem', fontSize: '1.1rem', fontWeight: 800 }}>USE RTM</button>
-                                ) : (
-                                    <button className="btn-solid-green" disabled style={{ flex: 1, padding: '0.8rem', fontSize: '1.1rem', fontWeight: 800, opacity: 0.5, cursor: 'not-allowed', background: '#991b1b' }}>
-                                        {myRtms <= 0 ? 'NO RTM CARDS LEFT' :
-                                            myPurse < auctionState.currentBid ? 'NOT ENOUGH PURSE' :
-                                                mySquadSize >= 25 ? 'SQUAD FULL (25/25)' :
-                                                    'OVERSEAS LIMIT REACHED'
-                                        }
+                        {/* Player + bid info */}
+                        <div style={{ marginBottom: '1.5rem', color: '#fff', fontSize: '1rem', background: 'rgba(255,255,255,0.05)', padding: '1rem', borderRadius: '10px', textAlign: 'left', display: 'grid', gap: '0.5rem' }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                                <span style={{ color: 'rgba(255,255,255,0.55)', fontSize: '0.82rem', fontWeight: 600 }}>PLAYER</span>
+                                <span style={{ fontWeight: 800 }}>{`${activePlayer.firstName} ${activePlayer.lastName}`}</span>
+                            </div>
+                            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                                <span style={{ color: 'rgba(255,255,255,0.55)', fontSize: '0.82rem', fontWeight: 600 }}>BID TO MATCH</span>
+                                <span style={{ fontWeight: 800, color: '#10b981', fontSize: '1.1rem' }}>₹{auctionState.currentBid.toFixed(2)} Cr</span>
+                            </div>
+                            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                                <span style={{ color: 'rgba(255,255,255,0.55)', fontSize: '0.82rem', fontWeight: 600 }}>HIGHEST BIDDER</span>
+                                <span style={{ fontWeight: 800, color: TEAM_COLORS[auctionState.currentBidTeam] || '#fff' }}>{auctionState.currentBidTeam}</span>
+                            </div>
+                            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                                <span style={{ color: 'rgba(255,255,255,0.55)', fontSize: '0.82rem', fontWeight: 600 }}>TIME LEFT</span>
+                                <span style={{ fontWeight: 800, color: auctionState.timer <= 5 ? '#ef4444' : '#D4AF37' }}>{auctionState.timer}s</span>
+                            </div>
+                        </div>
+
+                        {/* Buttons — only shown to the RTM team */}
+                        {actualMyTeam === auctionState.rtmTeam ? (
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                                {myRtms > 0 && myPurse >= auctionState.currentBid && mySquadSize < 25 && !(isPlayerOverseas && myOverseasCount >= 8) ? (
+                                    <button
+                                        className="btn-solid-green"
+                                        onClick={handleRtmAccept}
+                                        style={{ padding: '0.9rem', fontSize: '1.1rem', fontWeight: 900, letterSpacing: '1px', borderRadius: '10px' }}
+                                    >
+                                        ✅ ACCEPT RTM — Claim {`${activePlayer.firstName} ${activePlayer.lastName}`} for ₹{auctionState.currentBid.toFixed(2)} Cr
                                     </button>
-                                )
-                            ) : (
-                                <button className="btn-solid-green" disabled style={{ flex: 1, padding: '0.8rem', fontSize: '1.1rem', fontWeight: 800, opacity: 0.5, cursor: 'not-allowed', background: '#4b5563' }}>USE RTM</button>
-                            )}
-
-                            {actualMyTeam === auctionState.rtmTeam ? (
-                                <button className="btn-solid-red" onClick={handleRtmDecline} style={{ flex: 1, padding: '0.8rem', fontSize: '1.1rem', fontWeight: 800 }}>DECLINE</button>
-                            ) : (
-                                <button className="btn-solid-red" disabled style={{ flex: 1, padding: '0.8rem', fontSize: '1.1rem', fontWeight: 800, opacity: 0.5, cursor: 'not-allowed', background: '#4b5563' }}>DECLINE</button>
-                            )}
-                        </div>
-
-                        {actualMyTeam !== auctionState.rtmTeam && (
-                            <div style={{ marginTop: '1rem', color: '#aaa', fontStyle: 'italic', fontSize: '0.9rem', background: 'rgba(0,0,0,0.3)', padding: '0.75rem', borderRadius: '8px' }}>
-                                Waiting for <strong style={{ color: '#fff' }}>{auctionState.rtmTeam}</strong> to make a decision... <span style={{ color: '#D4AF37', fontWeight: 800 }}>({auctionState.timer}s)</span>
+                                ) : (
+                                    <button
+                                        disabled
+                                        style={{ padding: '0.9rem', fontSize: '1rem', fontWeight: 800, borderRadius: '10px', background: '#7f1d1d', color: '#fca5a5', border: '1px solid #991b1b', cursor: 'not-allowed', opacity: 0.85 }}
+                                    >
+                                        ❌ {myRtms <= 0 ? 'No RTM Cards Left' : myPurse < auctionState.currentBid ? `Insufficient Purse (₹${myPurse.toFixed(2)} Cr)` : mySquadSize >= 25 ? 'Squad Full (25/25)' : 'Overseas Limit Reached'}
+                                    </button>
+                                )}
+                                <button
+                                    className="btn-solid-red"
+                                    onClick={handleRtmDecline}
+                                    style={{ padding: '0.8rem', fontSize: '1rem', fontWeight: 800, letterSpacing: '0.5px', borderRadius: '10px' }}
+                                >
+                                    ✖ DECLINE RTM — Let {auctionState.currentBidTeam} win
+                                </button>
+                                <div style={{ color: 'rgba(255,255,255,0.4)', fontSize: '0.75rem', marginTop: '0.25rem' }}>
+                                    You have <span style={{ color: '#D4AF37', fontWeight: 800 }}>{myRtms}</span> RTM card{myRtms !== 1 ? 's' : ''} remaining
+                                </div>
+                            </div>
+                        ) : (
+                            /* All other teams / observers — just a waiting message, no buttons */
+                            <div style={{ background: 'rgba(0,0,0,0.35)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '10px', padding: '1.25rem', color: 'rgba(255,255,255,0.7)', fontSize: '0.95rem' }}>
+                                <div style={{ fontSize: '1.5rem', marginBottom: '0.5rem' }}>⏳</div>
+                                Waiting for <strong style={{ color: TEAM_COLORS[auctionState.rtmTeam] || '#fff' }}>{auctionState.rtmTeam}</strong> to decide…
+                                <div style={{ color: auctionState.timer <= 5 ? '#ef4444' : '#D4AF37', fontWeight: 900, fontSize: '1.4rem', marginTop: '0.5rem' }}>{auctionState.timer}s</div>
                             </div>
                         )}
                     </div>
