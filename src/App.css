@@ -2459,58 +2459,13 @@
   animation: set-subtitle-in 0.45s 1.3s ease-out forwards;
 }
 
-/* ── Home hero sticky bottom banner ad ── */
-.home-hero-banner-ad {
-  position: absolute;
-  bottom: 0;
-  left: 0;
+/* ── Inline banner ad below join room ── */
+.home-inline-banner-ad {
   width: 100%;
-  z-index: 20;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: rgba(0, 0, 0, 0.82);
-  backdrop-filter: blur(8px);
-  border-top: 1px solid rgba(245, 158, 11, 0.18);
-  padding: 0.5rem 2.5rem 0.5rem 1rem;
-  animation: banner-slide-up 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
-  min-height: 70px;
-}
-
-@keyframes banner-slide-up {
-  from { transform: translateY(100%); opacity: 0; }
-  to   { transform: translateY(0);    opacity: 1; }
-}
-
-.home-hero-banner-ad-inner {
-  flex: 1;
+  margin-top: 1.5rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
   display: flex;
   justify-content: center;
-  overflow: hidden;
-  max-width: 900px;
 }
-
-.home-hero-banner-close {
-  position: absolute;
-  top: 50%;
-  right: 0.6rem;
-  transform: translateY(-50%);
-  background: rgba(255, 255, 255, 0.08);
-  border: 1px solid rgba(255, 255, 255, 0.15);
-  color: rgba(255, 255, 255, 0.6);
-  border-radius: 50%;
-  width: 24px;
-  height: 24px;
-  font-size: 0.7rem;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  transition: background 0.2s, color 0.2s;
-  flex-shrink: 0;
-}
-
-.home-hero-banner-close:hover {
-  background: rgba(255, 255, 255, 0.18);
-  color: #fff;
-}
+
