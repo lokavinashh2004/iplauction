@@ -787,9 +787,6 @@ export default function Auction({ userData, onEnd }) {
 
     return (
         <>
-            {/* Desktop Left Ad */}
-            <div className="custom-ad2-desktop hide-on-mobile"><Ad2Sidebar idSuffix="desktop-left" /></div>
-
             <div className="center-panel" style={{ position: 'relative' }}>
             {/* Menu Button */}
             <button
@@ -1361,8 +1358,6 @@ export default function Auction({ userData, onEnd }) {
             </div>
         </div>
 
-        {/* Desktop Right Ad */}
-        <div className="custom-ad2-desktop hide-on-mobile"><Ad2Sidebar idSuffix="desktop-right" /></div>
     </>
   );
 }
