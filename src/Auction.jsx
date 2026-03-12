@@ -785,7 +785,11 @@ export default function Auction({ userData, onEnd }) {
     const unsoldCount = unsoldPlayers.length;
 
     return (
-        <div className="center-panel" style={{ position: 'relative' }}>
+        <>
+            {/* Desktop Left Ad */}
+            <div className="custom-ad2-desktop hide-on-mobile">ad2</div>
+
+            <div className="center-panel" style={{ position: 'relative' }}>
             {/* Menu Button */}
             <button
                 onClick={() => setIsStatsOpen(true)}
@@ -1158,6 +1162,9 @@ export default function Auction({ userData, onEnd }) {
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#a855f7" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4.5 16.5c-1.5 1.26-2 5-2 5s3.74-.5 5-2c.71-.84.7-2.13-.09-2.91a2.18 2.18 0 0 0-2.91-.09z"></path><path d="m12 15-3-3a22 22 0 0 1 3.86-12 2 2 0 0 1 2.9 0 22 22 0 0 1-12 3.86z"></path><path d="m15 12 3-3a22 22 0 0 0 12-3.86 2 2 0 0 0 0-2.9 22 22 0 0 0-3.86 12z"></path></svg>
             </div>
 
+            {/* Mobile Ad - Shown below the banner only on small screens */}
+            <div className="custom-ad2-mobile show-on-mobile mb-4">ad2</div>
+
             {/* Interactive Tabs */}
             <div className="room-card tabbed-card animate-fade-in" style={{ animationDelay: '0.2s' }}>
                 <div className="room-tabs flex-wrap">
@@ -1352,5 +1359,9 @@ export default function Auction({ userData, onEnd }) {
                 </div>
             </div>
         </div>
-    );
+
+        {/* Desktop Right Ad */}
+        <div className="custom-ad2-desktop hide-on-mobile">ad2</div>
+    </>
+  );
 }
