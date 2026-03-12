@@ -1329,6 +1329,8 @@
   justify-content: center;
   width: 100vw;
   margin-left: calc(-50vw + 50%);
+  position: relative;
+  z-index: 30000;
 }
 
 .topbar-content {
@@ -2419,6 +2421,7 @@
   overflow: hidden;
   background: #05070c;
   animation: auction-intro-overlay 4s ease-in-out both;
+  pointer-events: none;
 }
 
 .auction-intro-bg {
