@@ -53,6 +53,8 @@ export default function Room({ userData, setUserData, isHost }) {
     };
     const [timer, setTimer] = useState(15);
     const [users, setUsers] = useState({});
+    const [presence, setPresence] = useState({});
+    const [leftUsers, setLeftUsers] = useState({});
     const [activityLog, setActivityLog] = useState([]);
 
     useEffect(() => {
@@ -76,6 +78,20 @@ export default function Room({ userData, setUserData, isHost }) {
             }
         });
         return () => unsubscribe();
+    }, [userData.roomId]);
+
+    useEffect(() => {
+        if (!userData.roomId) return;
+        const unsubPresence = onValue(ref(db, `rooms/${userData.roomId}/presence`), (snap) => {
+            setPresence(snap.exists() ? snap.val() : {});
+        });
+        const unsubLeft = onValue(ref(db, `rooms/${userData.roomId}/leftUsers`), (snap) => {
+            setLeftUsers(snap.exists() ? snap.val() : {});
+        });
+        return () => {
+            unsubPresence();
+            unsubLeft();
+        };
     }, [userData.roomId]);
 
     const TEAMS = ['MI', 'CSK', 'RCB', 'KKR', 'DC', 'PBKS', 'RR', 'SRH', 'GT', 'LSG'];
@@ -287,16 +303,56 @@ export default function Room({ userData, setUserData, isHost }) {
 
                     {activeTab === 'players' && (
                         <div className="players-panel">
-                            {Object.entries(users).map(([name, data]) => (
-                                <div className="player-row" key={name}>
-                                    <div className="flex items-center" style={{ gap: '0.75rem' }}>
-                                        <span className={`team-rect-small ${data.team ? data.team.toLowerCase() : 'mi'}`}>{data.team || 'MI'}</span>
-                                        <span style={{ fontWeight: 600 }}>{name}</span>
-                                        {name === userData.name && <span style={{ fontSize: '0.7rem', color: 'var(--text-tertiary)' }}>(You)</span>}
+                            {(() => {
+                                const active = [];
+                                const offline = [];
+                                Object.entries(users).forEach(([name, data]) => {
+                                    const connCount = presence?.[name]?.connections ? Object.keys(presence[name].connections).length : 0;
+                                    const isOnline = connCount > 0;
+                                    (isOnline ? active : offline).push([name, data]);
+                                });
+
+                                const renderRow = (name, data, isOnline) => (
+                                    <div className="player-row" key={name} style={{ opacity: isOnline ? 1 : 0.6 }}>
+                                        <div className="flex items-center" style={{ gap: '0.75rem' }}>
+                                            <span className={`team-rect-small ${data.team ? data.team.toLowerCase() : 'mi'}`}>{data.team || '—'}</span>
+                                            <span style={{ fontWeight: 600 }}>{name}</span>
+                                            {name === userData.name && <span style={{ fontSize: '0.7rem', color: 'var(--text-tertiary)' }}>(You)</span>}
+                                        </div>
+                                        <div className="flex items-center" style={{ gap: '0.5rem' }}>
+                                            <div className="online-dot" title={isOnline ? 'Online' : 'Offline'} style={{ opacity: isOnline ? 1 : 0.2 }}></div>
+                                            <span style={{ fontSize: '0.75rem', color: 'var(--text-tertiary)' }}>{isOnline ? 'Active' : 'Left/Offline'}</span>
+                                        </div>
                                     </div>
-                                    <div className="online-dot" title="Online"></div>
-                                </div>
-                            ))}
+                                );
+
+                                return (
+                                    <>
+                                        <div style={{ fontSize: '0.8rem', fontWeight: 800, color: '#10b981', marginBottom: '0.5rem' }}>
+                                            Active ({active.length})
+                                        </div>
+                                        {active.length === 0 ? (
+                                            <div style={{ color: 'var(--text-tertiary)', fontSize: '0.85rem', padding: '0.5rem 0' }}>No active users.</div>
+                                        ) : (
+                                            active.map(([n, d]) => renderRow(n, d, true))
+                                        )}
+
+                                        <div style={{ fontSize: '0.8rem', fontWeight: 800, color: '#f59e0b', margin: '1rem 0 0.5rem' }}>
+                                            Left/Offline ({offline.length + Object.keys(leftUsers || {}).length})
+                                        </div>
+                                        {offline.map(([n, d]) => renderRow(n, d, false))}
+                                        {Object.entries(leftUsers || {}).map(([n, d]) => (
+                                            <div className="player-row" key={`left_${n}`} style={{ opacity: 0.55 }}>
+                                                <div className="flex items-center" style={{ gap: '0.75rem' }}>
+                                                    <span className={`team-rect-small ${d.team ? d.team.toLowerCase() : 'mi'}`}>{d.team || '—'}</span>
+                                                    <span style={{ fontWeight: 600 }}>{n}</span>
+                                                </div>
+                                                <span style={{ fontSize: '0.75rem', color: 'var(--text-tertiary)' }}>Left</span>
+                                            </div>
+                                        ))}
+                                    </>
+                                );
+                            })()}
                         </div>
                     )}
                 </div>

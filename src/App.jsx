@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { db } from './firebase';
-import { ref, onValue, get, remove, set, update } from 'firebase/database';
+import { ref, onValue, get, remove, set, update, push, onDisconnect, serverTimestamp } from 'firebase/database';
 import './App.css';
 import Home from './Home';
 import Room from './Room';
@@ -125,8 +125,19 @@ function AtIframeBanner({ adKey, width, height }) {
 
 function App() {
   const [currentPage, setCurrentPage] = useState('home');
+  const deviceIdRef = useRef(null);
+
+  if (!deviceIdRef.current) {
+    let did = localStorage.getItem('auctionDeviceId');
+    if (!did) {
+      did = `${Date.now().toString(36)}_${Math.random().toString(36).slice(2)}`;
+      localStorage.setItem('auctionDeviceId', did);
+    }
+    deviceIdRef.current = did;
+  }
+
   const [userData, setUserData] = useState(() => {
-    const savedData = sessionStorage.getItem('auctionUserData');
+    const savedData = localStorage.getItem('auctionUserData');
     if (savedData) {
       try {
         return JSON.parse(savedData);
@@ -150,19 +161,46 @@ function App() {
     };
   });
 
-  // Save userData to sessionStorage whenever it updates, to persist it across immediate reloads
+  // Persist until explicit Leave Room (supports resume after close)
   useEffect(() => {
     if (userData.hasJoined && userData.name && userData.roomId) {
-      sessionStorage.setItem('auctionUserData', JSON.stringify(userData));
+      localStorage.setItem('auctionUserData', JSON.stringify(userData));
       // Auto-update URL hash so the user can easily copy/paste the link
       window.location.hash = `#room=${userData.roomId}`;
-    } else if (!userData.hasJoined) {
-      sessionStorage.removeItem('auctionUserData');
     }
   }, [userData]);
 
   const [hostName, setHostName] = useState('');
   const [isPaused, setIsPaused] = useState(false);
+
+  // Presence: multiple tabs supported via connections
+  useEffect(() => {
+    if (!userData.roomId || !userData.hasJoined || !userData.name) return;
+
+    const name = userData.name;
+    const roomId = userData.roomId;
+    const connectionsListRef = ref(db, `rooms/${roomId}/presence/${name}/connections`);
+    const lastSeenRef = ref(db, `rooms/${roomId}/presence/${name}/lastSeen`);
+    const leftAtRef = ref(db, `rooms/${roomId}/users/${name}/leftAt`);
+
+    const connRef = push(connectionsListRef);
+    set(connRef, { deviceId: deviceIdRef.current, at: serverTimestamp() });
+    onDisconnect(connRef).remove();
+    onDisconnect(lastSeenRef).set(serverTimestamp());
+
+    // Mark as not-left on active session
+    set(leftAtRef, null);
+    set(lastSeenRef, serverTimestamp());
+
+    const ping = setInterval(() => {
+      set(lastSeenRef, serverTimestamp());
+    }, 20000);
+
+    return () => {
+      clearInterval(ping);
+      try { remove(connRef); } catch { /* noop */ }
+    };
+  }, [userData.roomId, userData.hasJoined, userData.name]);
 
   useEffect(() => {
     if (!userData.roomId || !userData.hasJoined) return;
@@ -225,6 +263,7 @@ function App() {
     setUserData(prev => ({ ...prev, roomId: '', team: null, hasJoined: false }));
     setCurrentPage('home');
     window.location.hash = '';
+    localStorage.removeItem('auctionUserData');
 
     // Backend Cleanup
     const roomRef = ref(db, `rooms/${rId}`);
@@ -233,6 +272,9 @@ function App() {
       if (snap.exists()) {
         const data = snap.val();
         const users = data.users || {};
+        // Store in leftUsers for display, then remove from active users
+        const leftUserData = users[uName] || { team: null };
+        await set(ref(db, `rooms/${rId}/leftUsers/${uName}`), { ...leftUserData, leftAt: Date.now() });
         delete users[uName];
 
         const remaining = Object.keys(users);
@@ -242,6 +284,7 @@ function App() {
         } else {
           // Just remove self
           await remove(ref(db, `rooms/${rId}/users/${uName}`));
+          await remove(ref(db, `rooms/${rId}/presence/${uName}`));
           // Provide a manual fallback for host change if the client leaves explicitly
           if (data.host === uName) {
             await set(ref(db, `rooms/${rId}/host`), remaining.sort()[0]);
@@ -312,6 +355,9 @@ function App() {
             </div>
 
             <div className="flex items-center" style={{ gap: '0.75rem', flexWrap: 'wrap', justifyContent: 'center' }}>
+              <button className="btn-outline-red" onClick={leaveRoom}>
+                Leave
+              </button>
               {isHost && (
                 <>
                   <button

@@ -830,19 +830,18 @@ export default function Auction({ userData, onEnd }) {
         return teamUser && roomUsers[teamUser].rtms !== undefined ? roomUsers[teamUser].rtms : 3;
     };
 
-    const handleRtmAccept = () => {
-        set(ref(db, `rooms/${userData.roomId}/auctionState`), {
-            ...auctionState,
+    const handleRtmAccept = async () => {
+        await update(ref(db, `rooms/${userData.roomId}/auctionState`), {
             currentBidTeam: auctionState.rtmTeam,
             isRtmPhase: false,
             isRtmUsedThisPlayer: true,
+            rtmTeam: null,
             timer: 0 // Ends phase and triggers the sale correctly to the new leading team
         });
     };
 
-    const handleRtmDecline = () => {
-        set(ref(db, `rooms/${userData.roomId}/auctionState`), {
-            ...auctionState,
+    const handleRtmDecline = async () => {
+        await update(ref(db, `rooms/${userData.roomId}/auctionState`), {
             isRtmPhase: false,
             isRtmUsedThisPlayer: true,
             rtmTeam: null,

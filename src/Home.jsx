@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { ResponsiveAdBanner, NativeAdBanner } from './AdBanner';
 import { db } from './firebase';
-import { ref, set, onValue, onDisconnect, get } from 'firebase/database';
+import { ref, set, onValue, get } from 'firebase/database';
 
 const IPL_TEAMS = ['MI', 'CSK', 'RCB', 'KKR', 'DC', 'PBKS', 'RR', 'SRH', 'GT', 'LSG'];
 
@@ -42,12 +42,17 @@ export default function Home({ userData, setUserData, onJoin }) {
         if (isCreating && !userData.team) { alert('Please select a team!'); return; }
         const roomId = isCreating ? Math.random().toString(36).substring(2, 7).toUpperCase() : joinRoomId.toUpperCase();
         if (!isCreating && !joinRoomId) { alert('Please enter a room code!'); return; }
-        if (!isCreating && takenTeams.includes(userData.team)) { alert('Team already taken!'); return; }
+        if (!isCreating) {
+            const roomSnap = await get(ref(db, `rooms/${roomId}`));
+            if (!roomSnap.exists()) { alert('Room not found!'); return; }
+        }
 
         try {
             const userRef = ref(db, `rooms/${roomId}/users/${userData.name}`);
-            await set(userRef, { team: isCreating ? userData.team : null, joinedAt: Date.now() });
-            await onDisconnect(userRef).remove();
+            const userSnap = await get(userRef);
+            const existingVal = userSnap.exists() ? userSnap.val() : null;
+            const mergedTeam = isCreating ? userData.team : (existingVal?.team ?? null);
+            await set(userRef, { ...(existingVal || {}), team: mergedTeam, joinedAt: existingVal?.joinedAt || Date.now(), leftAt: null });
             if (isCreating) {
                 await set(ref(db, `rooms/${roomId}/status`), 'waiting');
                 await set(ref(db, `rooms/${roomId}/host`), userData.name);
@@ -58,9 +63,9 @@ export default function Home({ userData, setUserData, onJoin }) {
                 newLogs.unshift({ id: Date.now() + 2, type: 'TEAM_SELECT', team: userData.team, userName: userData.name, timestamp: Date.now() + 2 });
             }
             const logSnap = await get(ref(db, `rooms/${roomId}/activityLog`));
-            const existing = logSnap.val() ? (Array.isArray(logSnap.val()) ? logSnap.val() : Object.values(logSnap.val())) : [];
-            await set(ref(db, `rooms/${roomId}/activityLog`), [...newLogs, ...existing].slice(0, 50));
-            setUserData({ ...userData, roomId, team: isCreating ? userData.team : null, hasJoined: true });
+            const existingLogs = logSnap.val() ? (Array.isArray(logSnap.val()) ? logSnap.val() : Object.values(logSnap.val())) : [];
+            await set(ref(db, `rooms/${roomId}/activityLog`), [...newLogs, ...existingLogs].slice(0, 50));
+            setUserData({ ...userData, roomId, team: mergedTeam, hasJoined: true });
             onJoin();
         } catch (e) { console.error(e); alert('Could not connect to room!'); }
     };
