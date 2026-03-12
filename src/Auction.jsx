@@ -844,6 +844,8 @@ export default function Auction({ userData, onEnd }) {
         set(ref(db, `rooms/${userData.roomId}/auctionState`), {
             ...auctionState,
             isRtmPhase: false,
+            isRtmUsedThisPlayer: true,
+            rtmTeam: null,
             timer: 0 // Triggers normal sale to the original bidder
         });
     };
