@@ -92,3 +92,31 @@ a {
 .animate-fade-in {
   animation: fade-in 0.4s ease forwards;
 }
+
+/* ── Ad placement styles (Responsive) ── */
+.responsive-ad-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin: 1.5rem 0; /* Spacing above and below */
+  width: 100%;
+}
+
+.desktop-ad {
+  display: block;
+}
+
+.mobile-ad {
+  display: none;
+}
+
+/* Switch to Mobile Ad for tablets/phones */
+@media (max-width: 768px) {
+  .desktop-ad {
+    display: none;
+  }
+  .mobile-ad {
+    display: block;
+  }
+}
+

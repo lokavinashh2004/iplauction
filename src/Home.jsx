@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { ResponsiveAdBanner } from './AdBanner';
 import { db } from './firebase';
 import { ref, set, onValue, onDisconnect, get } from 'firebase/database';
 
@@ -91,6 +92,9 @@ export default function Home({ userData, setUserData, onJoin }) {
                     <span style={{ color: '#f59e0b' }}>🔥</span>
                     <span>2026 Official List • 350 Players</span>
                 </div>
+
+                {/* Ads Component */}
+                <ResponsiveAdBanner />
 
                 {/* Buttons */}
                 <div className="home-cta-group animate-fade-in">
