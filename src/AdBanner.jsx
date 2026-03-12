@@ -107,3 +107,33 @@ export function ResponsiveAdBanner() {
         </div>
     );
 }
+
+/**
+ * Native / in-content banner ad — full width, subtle design.
+ */
+export function NativeAdBanner() {
+  const loaded = useRef(false);
+
+  useEffect(() => {
+    if (loaded.current) return;
+    loaded.current = true;
+
+    const script = document.createElement('script');
+    script.async = true;
+    script.setAttribute('data-cfasync', 'false');
+    script.src =
+      'https://pl28898574.effectivegatecpm.com/1d774fb35f73e6f7eb66b8b54ca74a28/invoke.js';
+
+    const container = document.getElementById(
+      'container-1d774fb35f73e6f7eb66b8b54ca74a28'
+    );
+    if (container) container.appendChild(script);
+  }, []);
+
+  return (
+    <div
+      id="container-1d774fb35f73e6f7eb66b8b54ca74a28"
+      style={{ width: '100%', maxWidth: '728px', margin: '0 auto 1.5rem auto' }}
+    />
+  );
+}

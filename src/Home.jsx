@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { ResponsiveAdBanner } from './AdBanner';
+import { ResponsiveAdBanner, NativeAdBanner } from './AdBanner';
 import { db } from './firebase';
 import { ref, set, onValue, onDisconnect, get } from 'firebase/database';
 
@@ -130,6 +130,9 @@ export default function Home({ userData, setUserData, onJoin }) {
                             </button>
                             <span className="home-form-title">Create New Room</span>
                         </div>
+
+                        {/* Top Native Ad for Mobile View */}
+                        <NativeAdBanner />
 
                         <div className="form-group">
                             <label className="form-label">Your Name</label>
