@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { BannerAd468, NativeBannerAd } from './AdBanner';
 import { db } from './firebase';
 import { ref, set, onValue, onDisconnect, get } from 'firebase/database';
 
@@ -110,6 +111,16 @@ export default function Home({ userData, setUserData, onJoin }) {
                         </svg>
                         Join Room
                     </button>
+                </div>
+
+                {/* ── Ads: only on the landing screen, below the CTAs ── */}
+                <div className="home-ads-wrap">
+                    <div className="home-ad-banner-desktop">
+                        <BannerAd468 />
+                    </div>
+                    <div className="home-ad-native">
+                        <NativeBannerAd />
+                    </div>
                 </div>
             </div>
 
