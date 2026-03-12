@@ -3,7 +3,8 @@ import { db } from './firebase';
 import { ref, onValue, set, get } from 'firebase/database';
 import { playersData as RAW_PLAYERS_DATA } from './Players/playersData';
 import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd';
-
+import { Ad2Sidebar } from './AdBanner';
+import './App.css';
 const TEAM_COLORS = {
     MI: '#004BA0',
     CSK: '#FCCA06',
@@ -787,7 +788,7 @@ export default function Auction({ userData, onEnd }) {
     return (
         <>
             {/* Desktop Left Ad */}
-            <div className="custom-ad2-desktop hide-on-mobile">ad2</div>
+            <div className="custom-ad2-desktop hide-on-mobile"><Ad2Sidebar idSuffix="desktop-left" /></div>
 
             <div className="center-panel" style={{ position: 'relative' }}>
             {/* Menu Button */}
@@ -1163,7 +1164,7 @@ export default function Auction({ userData, onEnd }) {
             </div>
 
             {/* Mobile Ad - Shown below the banner only on small screens */}
-            <div className="custom-ad2-mobile show-on-mobile mb-4">ad2</div>
+            <div className="custom-ad2-mobile show-on-mobile mb-4"><Ad2Sidebar idSuffix="mobile" /></div>
 
             {/* Interactive Tabs */}
             <div className="room-card tabbed-card animate-fade-in" style={{ animationDelay: '0.2s' }}>
@@ -1361,7 +1362,7 @@ export default function Auction({ userData, onEnd }) {
         </div>
 
         {/* Desktop Right Ad */}
-        <div className="custom-ad2-desktop hide-on-mobile">ad2</div>
+        <div className="custom-ad2-desktop hide-on-mobile"><Ad2Sidebar idSuffix="desktop-right" /></div>
     </>
   );
 }

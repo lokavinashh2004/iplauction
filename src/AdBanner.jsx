@@ -133,7 +133,29 @@ export function NativeAdBanner() {
   return (
     <div
       id="container-1d774fb35f73e6f7eb66b8b54ca74a28"
-      style={{ width: '100%', maxWidth: '728px', margin: '0 auto 1.5rem auto' }}
+      style={{ width: '100%', maxWidth: '728px', margin: '0 auto' }}
     />
   );
+}
+
+/**
+ * Ad2 Sidebar/Mobile placement.
+ */
+export function Ad2Sidebar({ idSuffix }) {
+  const loaded = useRef(false);
+
+  useEffect(() => {
+    if (loaded.current) return;
+    loaded.current = true;
+
+    const script = document.createElement('script');
+    script.src = 'https://pl28898581.effectivegatecpm.com/27/b2/44/27b244a27efdef8cdcfed8a6489a22a5.js';
+
+    const container = document.getElementById(`ad2-container-${idSuffix}`);
+    if (container) {
+      container.appendChild(script);
+    }
+  }, [idSuffix]);
+
+  return <div id={`ad2-container-${idSuffix}`} style={{ width: '100%', height: '100%' }} />;
 }
