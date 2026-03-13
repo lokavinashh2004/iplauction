@@ -33,8 +33,22 @@ export default function Room({ userData, setUserData, isHost }) {
 
     const handleTeamSelect = async (t) => {
         if (!setUserData) return;
-        const isTaken = Object.values(users).some(u => u.team === t);
+        
+        // Rapid local check
+        let isTaken = Object.values(users).some(u => u.team === t);
         if (isTaken && userData.team !== t) return;
+
+        // Double check against real-time server database to prevent race conditions
+        const snap = await get(ref(db, `rooms/${userData.roomId}/users`));
+        if (snap.exists()) {
+            const currentUsers = snap.val();
+            // Need to check against others, ignoring self 
+            isTaken = Object.entries(currentUsers).some(([n, u]) => n !== userData.name && u.team === t);
+            if (isTaken) {
+                alert('This team was just taken by another player!');
+                return;
+            }
+        }
 
         await set(ref(db, `rooms/${userData.roomId}/users/${userData.name}/team`), t);
         setUserData({ ...userData, team: t });

@@ -153,6 +153,22 @@ export default function Auction({ userData, onEnd }) {
     const [isStatsOpen, setIsStatsOpen] = useState(false);
     const [statsActiveTab, setStatsActiveTab] = useState('upcoming');
     const [selectedSquadTeam, setSelectedSquadTeam] = useState(null);
+    const [presence, setPresence] = useState({});
+    const [leftUsers, setLeftUsers] = useState({});
+
+    useEffect(() => {
+        if (!userData.roomId) return;
+        const unsubPresence = onValue(ref(db, `rooms/${userData.roomId}/presence`), (snap) => {
+            setPresence(snap.exists() ? snap.val() : {});
+        });
+        const unsubLeft = onValue(ref(db, `rooms/${userData.roomId}/leftUsers`), (snap) => {
+            setLeftUsers(snap.exists() ? snap.val() : {});
+        });
+        return () => {
+            unsubPresence();
+            unsubLeft();
+        };
+    }, [userData.roomId]);
 
     // Select Playing XI (local-only; does not modify Firebase squads)
     const [playingXIIds, setPlayingXIIds] = useState([]);
@@ -812,8 +828,9 @@ export default function Auction({ userData, onEnd }) {
     const handlePlaceBid = () => {
         if (!canBid || isSold) return;
 
-        set(ref(db, `rooms/${userData.roomId}/auctionState`), {
-            ...auctionState,
+        // Use update() to prevent wiping sibling fields (like isSetTransition) 
+        // if another client happened to write them concurrently.
+        update(ref(db, `rooms/${userData.roomId}/auctionState`), {
             currentBid: nextBidAmount,
             currentBidTeam: userData.team,
             timer: roomTimerSetting // Reset the auction countdown so teams can respond
@@ -1662,6 +1679,10 @@ export default function Auction({ userData, onEnd }) {
             {/* Interactive Tabs */}
             <div className="room-card tabbed-card animate-fade-in" style={{ animationDelay: '0.2s' }}>
                 <div className="room-tabs flex-wrap">
+                    <button className={`room-tab small ${activeTab === 'players' ? 'active-neutral full-bg' : ''}`} onClick={() => setActiveTab('players')}>
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
+                        Players <span className="tab-badge">{Object.keys(roomUsers).length}/10</span>
+                    </button>
                     <button className={`room-tab small ${activeTab === 'activity' ? 'active-orange full-bg' : ''}`} onClick={() => setActiveTab('activity')}>
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>
                         Activity <span className="tab-badge">{activityLog.length}</span>
@@ -1677,6 +1698,61 @@ export default function Auction({ userData, onEnd }) {
                 </div>
 
                 <div className="tab-content" style={{ minHeight: '300px' }}>
+                    {activeTab === 'players' && (
+                        <div className="players-panel">
+                            {(() => {
+                                const active = [];
+                                const offline = [];
+                                Object.entries(roomUsers || {}).forEach(([name, data]) => {
+                                    const connCount = presence?.[name]?.connections ? Object.keys(presence[name].connections).length : 0;
+                                    const isOnline = connCount > 0;
+                                    (isOnline ? active : offline).push([name, data]);
+                                });
+
+                                const renderRow = (name, data, isOnline) => (
+                                    <div className="player-row" key={name} style={{ opacity: isOnline ? 1 : 0.6 }}>
+                                        <div className="flex items-center" style={{ gap: '0.75rem' }}>
+                                            <span className={`team-rect-small ${data.team ? data.team.toLowerCase() : 'mi'}`}>{data.team || '—'}</span>
+                                            <span style={{ fontWeight: 600 }}>{name}</span>
+                                            {name === userData.name && <span style={{ fontSize: '0.7rem', color: 'var(--text-tertiary)' }}>(You)</span>}
+                                        </div>
+                                        <div className="flex items-center" style={{ gap: '0.5rem' }}>
+                                            <div className="online-dot" title={isOnline ? 'Online' : 'Offline'} style={{ opacity: isOnline ? 1 : 0.2 }}></div>
+                                            <span style={{ fontSize: '0.75rem', color: 'var(--text-tertiary)' }}>{isOnline ? 'Active' : 'Left/Offline'}</span>
+                                        </div>
+                                    </div>
+                                );
+
+                                return (
+                                    <>
+                                        <div style={{ fontSize: '0.8rem', fontWeight: 800, color: '#10b981', marginBottom: '0.5rem' }}>
+                                            Active ({active.length})
+                                        </div>
+                                        {active.length === 0 ? (
+                                            <div style={{ color: 'var(--text-tertiary)', fontSize: '0.85rem', padding: '0.5rem 0' }}>No active users.</div>
+                                        ) : (
+                                            active.map(([n, d]) => renderRow(n, d, true))
+                                        )}
+
+                                        <div style={{ fontSize: '0.8rem', fontWeight: 800, color: '#f59e0b', margin: '1rem 0 0.5rem' }}>
+                                            Left/Offline ({offline.length + Object.keys(leftUsers || {}).length})
+                                        </div>
+                                        {offline.map(([n, d]) => renderRow(n, d, false))}
+                                        {Object.entries(leftUsers || {}).map(([n, d]) => (
+                                            <div className="player-row" key={`left_${n}`} style={{ opacity: 0.55 }}>
+                                                <div className="flex items-center" style={{ gap: '0.75rem' }}>
+                                                    <span className={`team-rect-small ${d.team ? d.team.toLowerCase() : 'mi'}`}>{d.team || '—'}</span>
+                                                    <span style={{ fontWeight: 600 }}>{n}</span>
+                                                </div>
+                                                <span style={{ fontSize: '0.75rem', color: 'var(--text-tertiary)' }}>Left</span>
+                                            </div>
+                                        ))}
+                                    </>
+                                );
+                            })()}
+                        </div>
+                    )}
+
                     {activeTab === 'activity' && (
                         <div className="activity-feed" style={{ padding: '0 0.5rem', maxHeight: '300px', overflowY: 'auto' }}>
                             {activityLog.length === 0 ? (
