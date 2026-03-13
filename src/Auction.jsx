@@ -833,140 +833,46 @@ export default function Auction({ userData, onEnd }) {
         // Only the RTM team can accept
         if (actualMyTeam !== auctionState.rtmTeam) return;
         const rtmTeamName = auctionState.rtmTeam;
-        const bidAmount = auctionState.currentBid;
-        const currentPlayer = PLAYERS_DATA[auctionState.currentPlayerIndex];
-        const playerSnapshot = {
-            id: currentPlayer.id || Date.now(),
-            name: `${currentPlayer.firstName || ''} ${currentPlayer.lastName || ''}`.trim(),
-            role: currentPlayer.role || 'Unknown',
-            boughtFor: bidAmount,
-            image: currentPlayer.imageUrl || '',
-            country: currentPlayer.country || 'Unknown'
-        };
 
-        // Immediately close the RTM phase and mark sold to the RTM team
-        await update(ref(db, `rooms/${userData.roomId}/auctionState`), {
-            currentBidTeam: rtmTeamName,
+        // FIX: Do NOT set isSold:true here. Instead, hand off to the host's
+        // existing timer loop by setting timer:0, isSold:false,
+        // isRtmUsedThisPlayer:true, and currentBidTeam = rtmTeamName.
+        // The loop will then:
+        //   1. See timer<=0, isSold:false, isRtmUsedThisPlayer:true
+        //   2. Skip the RTM re-trigger (isRtmUsedThisPlayer blocks it)
+        //   3. Mark isSold:true with soldTo:rtmTeamName
+        //   4. Deduct purse, add to squad, log, schedule next player
+        // This removes the need to duplicate all that logic here and
+        // fixes the "is RTM team = host?" dependency that caused the stuck.
+        await set(ref(db, `rooms/${userData.roomId}/auctionState`), {
+            ...auctionState,
+            currentBidTeam: rtmTeamName,   // override winner to RTM team
             isRtmPhase: false,
-            isRtmUsedThisPlayer: true,
+            isRtmUsedThisPlayer: true,     // prevents RTM re-trigger in timer loop
             rtmTeam: null,
-            timer: 0,
-            isSold: true,
-            soldTo: rtmTeamName
+            isSold: false,                 // host timer loop will set this
+            soldTo: null,
+            timer: 0                       // triggers timer loop immediately
         });
-
-        // Add player to RTM team squad
-        get(ref(db, `rooms/${userData.roomId}/squads/${rtmTeamName}`)).then(snap => {
-            const currentSquad = snap.val() || [];
-            if (!currentSquad.some(p => p.id === playerSnapshot.id)) {
-                set(ref(db, `rooms/${userData.roomId}/squads/${rtmTeamName}`), [...currentSquad, playerSnapshot]);
-            }
-        });
-
-        // Deduct purse and one RTM card from the RTM team
-        const rtmBuyerName = Object.keys(roomUsers).find(name => roomUsers[name].team === rtmTeamName);
-        if (rtmBuyerName) {
-            const currentPurse = roomUsers[rtmBuyerName]?.purse !== undefined ? roomUsers[rtmBuyerName].purse : 120.0;
-            const currentRtms = roomUsers[rtmBuyerName]?.rtms !== undefined ? roomUsers[rtmBuyerName].rtms : 3;
-            set(ref(db, `rooms/${userData.roomId}/users/${rtmBuyerName}/purse`), currentPurse - bidAmount);
-            set(ref(db, `rooms/${userData.roomId}/users/${rtmBuyerName}/rtms`), Math.max(0, currentRtms - 1));
-        }
-
-        // Activity log
-        get(ref(db, `rooms/${userData.roomId}/activityLog`)).then(snap => {
-            const existing = snap.val() ? (Array.isArray(snap.val()) ? snap.val() : Object.values(snap.val())) : [];
-            set(ref(db, `rooms/${userData.roomId}/activityLog`), [{
-                id: Date.now(),
-                timestamp: Date.now(),
-                playerName: playerSnapshot.name,
-                status: 'SOLD',
-                team: rtmTeamName,
-                price: bidAmount
-            }, ...existing].slice(0, 50));
-        });
-
-        // CRITICAL FIX: The timer useEffect bails out when isSold=true, so it never schedules
-        // the next-player advance. We must do it here ourselves after RTM Accept.
-        // Only the host drives the game forward.
-        if (!isHost) return;
-        const snapshotIndex = auctionState.currentPlayerIndex;
-        setTimeout(() => {
-            const currentSet = currentPlayer.set || 'M1';
-            const nextSetInOrder = getNextSetInOrder(currentSet, PLAYERS_DATA);
-            const nextSetFirstPlayer = nextSetInOrder ? getFirstPlayerOfSet(nextSetInOrder, PLAYERS_DATA) : null;
-            const currentSetRemainingIdx = snapshotIndex + 1;
-            const nextPlayerInData = currentSetRemainingIdx < PLAYERS_DATA.length ? PLAYERS_DATA[currentSetRemainingIdx] : null;
-            const isLastInSet = !nextPlayerInData || nextPlayerInData.set !== currentSet;
-
-            if (!nextPlayerInData && !nextSetFirstPlayer) {
-                // Auction fully over
-                set(ref(db, `rooms/${userData.roomId}/auctionState`), {
-                    isAuctionOver: true,
-                    timer: 0
-                });
-            } else if (isLastInSet && nextSetInOrder && nextSetFirstPlayer) {
-                // Last player in current set → cinematic set intro overlay
-                const nextSetFirstIdx = PLAYERS_DATA.indexOf(nextSetFirstPlayer);
-                set(ref(db, `rooms/${userData.roomId}/auctionState`), {
-                    isSold: true,
-                    soldTo: rtmTeamName,
-                    isSetTransition: true,
-                    transitionSet: nextSetInOrder,
-                    isRtmPhase: false,
-                    isRtmUsedThisPlayer: false,
-                    rtmTeam: null,
-                    timer: 0,
-                    currentPlayerIndex: snapshotIndex,
-                    activePlayer: currentPlayer
-                });
-                // After 4s resume auction with first player of next set
-                setTimeout(() => {
-                    get(ref(db, `rooms/${userData.roomId}/settings/timer`)).then(snap => {
-                        const currentTimerVal = snap.val() || 15;
-                        set(ref(db, `rooms/${userData.roomId}/auctionState`), {
-                            activePlayer: nextSetFirstPlayer,
-                            currentPlayerIndex: nextSetFirstIdx,
-                            currentBid: 0,
-                            currentBidTeam: null,
-                            timer: currentTimerVal,
-                            isSold: false,
-                            soldTo: null,
-                            isRtmPhase: false,
-                            isRtmUsedThisPlayer: false,
-                            rtmTeam: null,
-                            isSetTransition: false
-                        });
-                    });
-                }, 4000);
-            } else if (nextPlayerInData) {
-                // Normal advance within same set
-                get(ref(db, `rooms/${userData.roomId}/settings/timer`)).then(snap => {
-                    const currentTimerVal = snap.val() || 15;
-                    set(ref(db, `rooms/${userData.roomId}/auctionState`), {
-                        activePlayer: nextPlayerInData,
-                        currentPlayerIndex: currentSetRemainingIdx,
-                        currentBid: 0,
-                        currentBidTeam: null,
-                        timer: currentTimerVal,
-                        isSold: false,
-                        soldTo: null,
-                        isRtmPhase: false,
-                        isRtmUsedThisPlayer: false,
-                        rtmTeam: null
-                    });
-                });
-            }
-        }, 3000);
     };
 
     const handleRtmDecline = async () => {
         // Only the RTM team can decline (or the host can force-decline)
         if (actualMyTeam !== auctionState.rtmTeam && !isHost) return;
-        await update(ref(db, `rooms/${userData.roomId}/auctionState`), {
+
+        // FIX: Write a complete, clean state snapshot (not a partial update)
+        // so the timer loop never sees an ambiguous intermediate state.
+        // currentBidTeam stays as the original highest bidder (not RTM team).
+        // isRtmUsedThisPlayer:true prevents the RTM branch from re-firing.
+        // timer:0 causes the loop to immediately finalize the sale.
+        await set(ref(db, `rooms/${userData.roomId}/auctionState`), {
+            ...auctionState,
             isRtmPhase: false,
             isRtmUsedThisPlayer: true,
             rtmTeam: null,
-            timer: 0 // Host's timer loop fires → finalBuyer = original currentBidTeam → sold normally
+            isSold: false,
+            soldTo: null,
+            timer: 0
         });
     };
 
