@@ -127,7 +127,7 @@ function AtIframeBanner({ adKey, width, height }) {
 function App() {
   const [currentPage, setCurrentPage] = useState('home');
   const deviceIdRef = useRef(null);
-  const { updateAvailable, refresh } = useVersionCheck(5 * 60 * 1000); // poll every 5 min
+  const { updateAvailable, refresh } = useVersionCheck(2 * 60 * 1000); // poll every 2 min
 
   if (!deviceIdRef.current) {
     let did = localStorage.getItem('auctionDeviceId');
@@ -440,56 +440,63 @@ function App() {
         </div>
       </div>
 
-      {/* ── Update available toast ── */}
+      {/* ── Version update banner ── */}
       {updateAvailable && (
         <div
           role="alert"
-          aria-live="polite"
+          aria-live="assertive"
           style={{
             position: 'fixed',
-            bottom: '70px',           /* sit above the sticky ad banner */
+            bottom: '70px',
             left: '50%',
             transform: 'translateX(-50%)',
             zIndex: 99999,
             display: 'flex',
             alignItems: 'center',
-            gap: '0.75rem',
-            background: 'linear-gradient(135deg, #1a1a2e 0%, #16213e 100%)',
-            border: '1px solid rgba(212,175,55,0.55)',
-            borderRadius: '12px',
-            padding: '0.75rem 1rem',
-            boxShadow: '0 8px 32px rgba(0,0,0,0.55)',
+            gap: '0.85rem',
+            background: 'linear-gradient(135deg, #0f1923 0%, #1a2535 100%)',
+            border: '1px solid rgba(245,158,11,0.6)',
+            borderRadius: '14px',
+            padding: '0.85rem 1.1rem',
+            boxShadow: '0 0 0 1px rgba(245,158,11,0.15), 0 12px 40px rgba(0,0,0,0.65)',
             maxWidth: 'calc(100vw - 2rem)',
             width: 'max-content',
-            animation: 'slideUpFadeIn 0.35s ease both'
+            animation: 'slideUpFadeIn 0.3s ease both'
           }}
         >
-          {/* Icon */}
-          <span style={{ fontSize: '1.25rem', flexShrink: 0 }}>🔄</span>
+          {/* Lightning icon */}
+          <span style={{ fontSize: '1.3rem', flexShrink: 0, lineHeight: 1 }}>⚡</span>
 
-          {/* Message */}
-          <span style={{ color: '#fff', fontSize: '0.875rem', fontWeight: 600, lineHeight: 1.35 }}>
-            New update available
-          </span>
+          {/* Text */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.1rem' }}>
+            <span style={{ color: '#fff', fontSize: '0.9rem', fontWeight: 800, lineHeight: 1.2, whiteSpace: 'nowrap' }}>
+              New update available
+            </span>
+            <span style={{ color: 'rgba(255,255,255,0.5)', fontSize: '0.72rem', fontWeight: 500 }}>
+              Refresh to get the latest version
+            </span>
+          </div>
 
-          {/* Refresh button */}
+          {/* CTA button */}
           <button
+            id="version-refresh-btn"
             onClick={refresh}
             style={{
               flexShrink: 0,
-              background: 'linear-gradient(135deg, #D4AF37, #f0cc55)',
-              color: '#0a0a0f',
+              background: 'linear-gradient(135deg, #f59e0b, #ea580c)',
+              color: '#fff',
               border: 'none',
-              borderRadius: '8px',
-              padding: '0.4rem 0.9rem',
-              fontWeight: 800,
+              borderRadius: '9px',
+              padding: '0.45rem 1rem',
+              fontWeight: 900,
               fontSize: '0.8rem',
               cursor: 'pointer',
-              letterSpacing: '0.03em',
-              whiteSpace: 'nowrap'
+              letterSpacing: '0.04em',
+              whiteSpace: 'nowrap',
+              boxShadow: '0 4px 12px rgba(234,88,12,0.35)'
             }}
           >
-            Refresh
+            Refresh Game
           </button>
         </div>
       )}

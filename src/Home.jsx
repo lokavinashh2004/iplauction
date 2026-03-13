@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { ResponsiveAdBanner, NativeAdBanner } from './AdBanner';
 import { db } from './firebase';
 import { ref, set, onValue, get } from 'firebase/database';
+import { getServerVersion } from './useVersionCheck';
 
 const IPL_TEAMS = ['MI', 'CSK', 'RCB', 'KKR', 'DC', 'PBKS', 'RR', 'SRH', 'GT', 'LSG'];
 
@@ -40,6 +41,24 @@ export default function Home({ userData, setUserData, onJoin }) {
     const handleJoinOrCreate = async (isCreating) => {
         if (!userData.name) { alert('Please enter your name!'); return; }
         if (isCreating && !userData.team) { alert('Please select a team!'); return; }
+
+        // ── Version lock guard ────────────────────────────────────────────────
+        // Verify the client is running the latest build before entering a room.
+        // On mismatch: update localStorage and reload (silent, ~200ms on mobile).
+        const LS_KEY = 'app_version_lock';
+        const serverVer = await getServerVersion();
+        if (serverVer) {
+            const storedVer = localStorage.getItem(LS_KEY);
+            if (storedVer && storedVer !== serverVer) {
+                localStorage.setItem(LS_KEY, serverVer);
+                window.location.reload();
+                return; // prevent execution while reload is pending
+            }
+            // Keep localStorage current even when versions match
+            localStorage.setItem(LS_KEY, serverVer);
+        }
+        // ─────────────────────────────────────────────────────────────────────
+
         const roomId = isCreating ? Math.random().toString(36).substring(2, 7).toUpperCase() : joinRoomId.toUpperCase();
         if (!isCreating && !joinRoomId) { alert('Please enter a room code!'); return; }
         if (!isCreating) {

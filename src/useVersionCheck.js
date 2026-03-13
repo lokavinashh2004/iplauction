@@ -1,84 +1,136 @@
 import { useState, useEffect, useRef } from 'react';
 
+// ─────────────────────────────────────────────────────────────────────────────
+// VERSION LOCK SYSTEM
+// ─────────────────────────────────────────────────────────────────────────────
+//
+// Strategy:
+//  1. On first-ever load  → fetch version.json, save to localStorage, continue.
+//  2. On subsequent loads → compare localStorage version with server version.
+//     If they differ → update localStorage and hard-reload to get fresh JS/CSS.
+//  3. While the user is on-site → poll every 2 minutes (visibility-aware).
+//     If a new version is found → show the update banner (do NOT silent-reload
+//     mid-session to avoid disrupting an in-progress game).
+//  4. Before joining a room → expose getServerVersion() for a manual check.
+//
+// Low-end device care:
+//  • Polling pauses when the tab is hidden (Page Visibility API).
+//  • fetch uses cache:'no-store' + ?t= cache-buster — minimal network hit (~150 bytes).
+//  • No dependencies beyond React.
+// ─────────────────────────────────────────────────────────────────────────────
+
+const LS_KEY = 'app_version_lock';
+const VERSION_URL = () => `/version.json?t=${Date.now()}`;
+
+/** Fetch the server's current version string. Returns null on any error. */
+export async function getServerVersion() {
+    try {
+        const res = await fetch(VERSION_URL(), {
+            cache: 'no-store',
+            headers: { 'Cache-Control': 'no-cache' }
+        });
+        if (!res.ok) return null;
+        const data = await res.json();
+        return data?.version ?? null;
+    } catch {
+        return null;
+    }
+}
+
+/**
+ * runVersionLockOnLoad
+ * ─────────────────────
+ * Call this ONCE before mounting React.
+ * Compares the stored version to the server version.
+ * If they differ → update localStorage and reload (gets fresh hashed bundles).
+ * This is a fire-and-forget async call; React mounts in parallel and the in-flight
+ * fetch takes only ~100-200ms on a mobile connection — negligible.
+ */
+export async function runVersionLockOnLoad() {
+    const stored = localStorage.getItem(LS_KEY);
+    const server = await getServerVersion();
+    if (!server) return; // network issue — don't punish the user
+
+    if (!stored) {
+        // Very first visit — just save and continue
+        localStorage.setItem(LS_KEY, server);
+        return;
+    }
+
+    if (stored !== server) {
+        // Stale bundle detected — update record and reload
+        localStorage.setItem(LS_KEY, server);
+        window.location.reload();
+    }
+}
+
 /**
  * useVersionCheck
  * ───────────────
- * Polls /version.json every `intervalMs` milliseconds.
- * Returns `updateAvailable` (bool) and `refresh` (fn).
- *
- * Low-end device optimisations:
- *  • Uses Page Visibility API — the interval is paused while the tab is hidden,
- *    so background tabs on low-memory devices never waste CPU / radio time.
- *  • fetch() request is deliberately minimal (HEAD not needed because the file
- *    is tiny; Cache-Control: no-store ensures the CDN always returns fresh data).
- *  • No heavy dependencies; completely tree-shakeable.
+ * React hook for the in-session polling banner.
+ * Polls /version.json every `intervalMs` ms while the tab is visible.
+ * Returns { updateAvailable, refresh }.
  */
-export function useVersionCheck(intervalMs = 5 * 60 * 1000) {
-  const [updateAvailable, setUpdateAvailable] = useState(false);
-  const currentVersionRef = useRef(null);   // version string captured on first load
-  const timerRef = useRef(null);
-  const checkingRef = useRef(false);         // prevent concurrent fetches
+export function useVersionCheck(intervalMs = 2 * 60 * 1000) {
+    const [updateAvailable, setUpdateAvailable] = useState(false);
+    const sessionVersionRef = useRef(null); // version at the time this session started
+    const timerRef = useRef(null);
+    const checkingRef = useRef(false);
 
-  const check = async () => {
-    // Skip if tab is hidden or a check is already in-flight
-    if (document.hidden || checkingRef.current) return;
-    checkingRef.current = true;
-    try {
-      const res = await fetch(`/version.json?_=${Date.now()}`, {
-        cache: 'no-store',                   // bypass any residual HTTP cache
-        headers: { 'Cache-Control': 'no-cache' }
-      });
-      if (!res.ok) return;
-      const data = await res.json();
-      const remote = data?.version;
-      if (!remote) return;
+    const check = async () => {
+        if (document.hidden || checkingRef.current) return;
+        checkingRef.current = true;
+        try {
+            const server = await getServerVersion();
+            if (!server) return;
 
-      if (currentVersionRef.current === null) {
-        // First load — store as baseline, never show the banner
-        currentVersionRef.current = remote;
-      } else if (currentVersionRef.current !== remote) {
-        setUpdateAvailable(true);
-      }
-    } catch {
-      // Network errors are silently swallowed — no UX noise on poor connections
-    } finally {
-      checkingRef.current = false;
-    }
-  };
-
-  useEffect(() => {
-    // Run the first check immediately (sets baseline version)
-    check();
-
-    const schedule = () => {
-      clearInterval(timerRef.current);
-      // Only poll when the tab is visible
-      if (!document.hidden) {
-        timerRef.current = setInterval(check, intervalMs);
-      }
+            if (sessionVersionRef.current === null) {
+                // Capture the version that is running right now as the baseline
+                sessionVersionRef.current = server;
+                // Also keep localStorage in sync
+                localStorage.setItem(LS_KEY, server);
+            } else if (sessionVersionRef.current !== server) {
+                setUpdateAvailable(true);
+            }
+        } finally {
+            checkingRef.current = false;
+        }
     };
 
-    const onVisibility = () => {
-      if (document.hidden) {
-        // Entering background — pause polling
-        clearInterval(timerRef.current);
-      } else {
-        // Returning to foreground — check immediately then restart interval
+    useEffect(() => {
+        // Immediate first check (sets baseline)
         check();
-        schedule();
-      }
+
+        const startInterval = () => {
+            clearInterval(timerRef.current);
+            if (!document.hidden) {
+                timerRef.current = setInterval(check, intervalMs);
+            }
+        };
+
+        const onVisibility = () => {
+            if (document.hidden) {
+                clearInterval(timerRef.current);
+            } else {
+                // Tab became visible — check right away then resume interval
+                check();
+                startInterval();
+            }
+        };
+
+        startInterval();
+        document.addEventListener('visibilitychange', onVisibility);
+
+        return () => {
+            clearInterval(timerRef.current);
+            document.removeEventListener('visibilitychange', onVisibility);
+        };
+    }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+    const refresh = () => {
+        localStorage.setItem(LS_KEY, ''); // clear so next load doesn't get the old version
+        window.location.reload();
     };
 
-    schedule();
-    document.addEventListener('visibilitychange', onVisibility);
-
-    return () => {
-      clearInterval(timerRef.current);
-      document.removeEventListener('visibilitychange', onVisibility);
-    };
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
-
-  const refresh = () => window.location.reload();
-
-  return { updateAvailable, refresh };
+    return { updateAvailable, refresh };
 }
