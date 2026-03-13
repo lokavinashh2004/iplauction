@@ -26,10 +26,28 @@ function ScriptTag({ src, async = true }) {
   return null;
 }
 
-function NativeBanner() {
+function NativeBanner({ refreshTrigger }) {
+  const containerRef = useRef(null);
+  const [refreshCount, setRefreshCount] = useState(0);
+
+  // Auto-refresh every 60 seconds
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setRefreshCount(c => c + 1);
+    }, 60000);
+    return () => clearInterval(interval);
+  }, []);
+
   // Provider: effectivegatecpm native container
   useEffect(() => {
+    let cancelled = false;
     const src = 'https://pl28898574.effectivegatecpm.com/1d774fb35f73e6f7eb66b8b54ca74a28/invoke.js';
+    
+    // Clear previous ad markup
+    if (containerRef.current) {
+      containerRef.current.innerHTML = '';
+    }
+
     const s = document.createElement('script');
     s.async = true;
     s.dataset.cfasync = 'false';
@@ -37,19 +55,34 @@ function NativeBanner() {
     s.src = bustSrc;
     s.setAttribute('data-ad-src', bustSrc);
     s.setAttribute('data-ad-native', 'effectivegatecpm');
-    document.body.appendChild(s);
+    
+    if (containerRef.current && !cancelled) {
+        containerRef.current.appendChild(s);
+    }
 
     return () => {
-      // Remove only the instance we injected for this mount.
+      cancelled = true;
       try { s.remove(); } catch { /* noop */ }
+      if (containerRef.current) {
+        containerRef.current.innerHTML = '';
+      }
     };
-  }, []);
+  }, [refreshTrigger, refreshCount]);
 
-  return <div id="container-1d774fb35f73e6f7eb66b8b54ca74a28" style={{ width: '100%' }} />;
+  return <div id="container-1d774fb35f73e6f7eb66b8b54ca74a28" ref={containerRef} style={{ width: '100%', minHeight: '50px' }} />;
 }
 
-function AtIframeBanner({ adKey, width, height }) {
+function AtIframeBanner({ adKey, width, height, refreshTrigger }) {
   const containerRef = useRef(null);
+  const [refreshCount, setRefreshCount] = useState(0);
+
+  // Auto-refresh every 60 seconds
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setRefreshCount(c => c + 1);
+    }, 60000);
+    return () => clearInterval(interval);
+  }, []);
 
   useEffect(() => {
     if (!adKey || !width || !height) return;
@@ -105,8 +138,11 @@ function AtIframeBanner({ adKey, width, height }) {
 
     return () => {
       cancelled = true;
+      if (containerRef.current) {
+        containerRef.current.innerHTML = '';
+      }
     };
-  }, [adKey, width, height]);
+  }, [adKey, width, height, refreshTrigger, refreshCount]);
 
   return (
     <div
@@ -128,6 +164,8 @@ function App() {
   const [currentPage, setCurrentPage] = useState('home');
   const deviceIdRef = useRef(null);
   const { updateAvailable, refresh } = useVersionCheck(2 * 60 * 1000); // poll every 2 min
+  const [adRefreshTrigger, setAdRefreshTrigger] = useState(0);
+  const prevEventKeyRef = useRef('');
 
   if (!deviceIdRef.current) {
     let did = localStorage.getItem('auctionDeviceId');
@@ -247,6 +285,16 @@ function App() {
           set(ref(db, `rooms/${userData.roomId}/host`), userData.name);
         }
       }
+
+      // Track game events to trigger ad refresh
+      if (data.auctionState) {
+        const { isSold, currentPlayerIndex, isSetTransition } = data.auctionState;
+        const currentEventKey = `${currentPlayerIndex}_${isSold}_${isSetTransition}`;
+        if (prevEventKeyRef.current !== currentEventKey) {
+            prevEventKeyRef.current = currentEventKey;
+            setAdRefreshTrigger(c => c + 1);
+        }
+      }
     });
 
     return () => unsubscribe();
@@ -319,7 +367,7 @@ function App() {
 
       {/* Top banner 468x60 */}
       <div style={{ display: 'flex', justifyContent: 'center', padding: '0.5rem 0' }}>
-        <AtIframeBanner adKey="bbee66b578bab2bab6b8c7b4a0ff710f" width={468} height={60} />
+        <AtIframeBanner adKey="bbee66b578bab2bab6b8c7b4a0ff710f" width={468} height={60} refreshTrigger={adRefreshTrigger} />
       </div>
 
       {currentPage === 'room' && (
@@ -401,7 +449,7 @@ function App() {
 
           {/* Native banner (home) */}
           <div style={{ padding: '0.75rem 0', display: 'flex', justifyContent: 'center' }}>
-            <NativeBanner />
+            <NativeBanner refreshTrigger={adRefreshTrigger} />
           </div>
         </>
       ) : (
@@ -415,7 +463,7 @@ function App() {
 
             {/* Native banner (below content; avoids rendering as a flex-side column) */}
             <div style={{ padding: '0.75rem 0', display: 'flex', justifyContent: 'center' }}>
-              <NativeBanner />
+              <NativeBanner refreshTrigger={adRefreshTrigger} />
             </div>
           </div>
         </main>
@@ -436,7 +484,7 @@ function App() {
         }}
       >
         <div style={{ pointerEvents: 'auto' }}>
-          <AtIframeBanner adKey="537b7057e12f7e23c1b3b271192e137f" width={320} height={50} />
+          <AtIframeBanner adKey="537b7057e12f7e23c1b3b271192e137f" width={320} height={50} refreshTrigger={adRefreshTrigger} />
         </div>
       </div>
 
