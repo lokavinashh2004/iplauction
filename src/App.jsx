@@ -5,6 +5,7 @@ import './App.css';
 import Home from './Home';
 import Room from './Room';
 import Auction from './Auction';
+import { useVersionCheck } from './useVersionCheck';
 
 function ScriptTag({ src, async = true }) {
   useEffect(() => {
@@ -126,6 +127,7 @@ function AtIframeBanner({ adKey, width, height }) {
 function App() {
   const [currentPage, setCurrentPage] = useState('home');
   const deviceIdRef = useRef(null);
+  const { updateAvailable, refresh } = useVersionCheck(5 * 60 * 1000); // poll every 5 min
 
   if (!deviceIdRef.current) {
     let did = localStorage.getItem('auctionDeviceId');
@@ -437,6 +439,60 @@ function App() {
           <AtIframeBanner adKey="537b7057e12f7e23c1b3b271192e137f" width={320} height={50} />
         </div>
       </div>
+
+      {/* ── Update available toast ── */}
+      {updateAvailable && (
+        <div
+          role="alert"
+          aria-live="polite"
+          style={{
+            position: 'fixed',
+            bottom: '70px',           /* sit above the sticky ad banner */
+            left: '50%',
+            transform: 'translateX(-50%)',
+            zIndex: 99999,
+            display: 'flex',
+            alignItems: 'center',
+            gap: '0.75rem',
+            background: 'linear-gradient(135deg, #1a1a2e 0%, #16213e 100%)',
+            border: '1px solid rgba(212,175,55,0.55)',
+            borderRadius: '12px',
+            padding: '0.75rem 1rem',
+            boxShadow: '0 8px 32px rgba(0,0,0,0.55)',
+            maxWidth: 'calc(100vw - 2rem)',
+            width: 'max-content',
+            animation: 'slideUpFadeIn 0.35s ease both'
+          }}
+        >
+          {/* Icon */}
+          <span style={{ fontSize: '1.25rem', flexShrink: 0 }}>🔄</span>
+
+          {/* Message */}
+          <span style={{ color: '#fff', fontSize: '0.875rem', fontWeight: 600, lineHeight: 1.35 }}>
+            New update available
+          </span>
+
+          {/* Refresh button */}
+          <button
+            onClick={refresh}
+            style={{
+              flexShrink: 0,
+              background: 'linear-gradient(135deg, #D4AF37, #f0cc55)',
+              color: '#0a0a0f',
+              border: 'none',
+              borderRadius: '8px',
+              padding: '0.4rem 0.9rem',
+              fontWeight: 800,
+              fontSize: '0.8rem',
+              cursor: 'pointer',
+              letterSpacing: '0.03em',
+              whiteSpace: 'nowrap'
+            }}
+          >
+            Refresh
+          </button>
+        </div>
+      )}
     </div>
   );
 }
