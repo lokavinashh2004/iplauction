@@ -829,7 +829,6 @@ export default function Auction({ userData, onEnd }) {
         const teamUser = Object.keys(roomUsers).find(name => roomUsers[name].team === teamName);
         return teamUser && roomUsers[teamUser].rtms !== undefined ? roomUsers[teamUser].rtms : 3;
     };
-
     const handleRtmAccept = async () => {
         // Only the RTM team can accept
         if (actualMyTeam !== auctionState.rtmTeam) return;
@@ -885,6 +884,79 @@ export default function Auction({ userData, onEnd }) {
                 price: bidAmount
             }, ...existing].slice(0, 50));
         });
+
+        // CRITICAL FIX: The timer useEffect bails out when isSold=true, so it never schedules
+        // the next-player advance. We must do it here ourselves after RTM Accept.
+        // Only the host drives the game forward.
+        if (!isHost) return;
+        const snapshotIndex = auctionState.currentPlayerIndex;
+        setTimeout(() => {
+            const currentSet = currentPlayer.set || 'M1';
+            const nextSetInOrder = getNextSetInOrder(currentSet, PLAYERS_DATA);
+            const nextSetFirstPlayer = nextSetInOrder ? getFirstPlayerOfSet(nextSetInOrder, PLAYERS_DATA) : null;
+            const currentSetRemainingIdx = snapshotIndex + 1;
+            const nextPlayerInData = currentSetRemainingIdx < PLAYERS_DATA.length ? PLAYERS_DATA[currentSetRemainingIdx] : null;
+            const isLastInSet = !nextPlayerInData || nextPlayerInData.set !== currentSet;
+
+            if (!nextPlayerInData && !nextSetFirstPlayer) {
+                // Auction fully over
+                set(ref(db, `rooms/${userData.roomId}/auctionState`), {
+                    isAuctionOver: true,
+                    timer: 0
+                });
+            } else if (isLastInSet && nextSetInOrder && nextSetFirstPlayer) {
+                // Last player in current set → cinematic set intro overlay
+                const nextSetFirstIdx = PLAYERS_DATA.indexOf(nextSetFirstPlayer);
+                set(ref(db, `rooms/${userData.roomId}/auctionState`), {
+                    isSold: true,
+                    soldTo: rtmTeamName,
+                    isSetTransition: true,
+                    transitionSet: nextSetInOrder,
+                    isRtmPhase: false,
+                    isRtmUsedThisPlayer: false,
+                    rtmTeam: null,
+                    timer: 0,
+                    currentPlayerIndex: snapshotIndex,
+                    activePlayer: currentPlayer
+                });
+                // After 4s resume auction with first player of next set
+                setTimeout(() => {
+                    get(ref(db, `rooms/${userData.roomId}/settings/timer`)).then(snap => {
+                        const currentTimerVal = snap.val() || 15;
+                        set(ref(db, `rooms/${userData.roomId}/auctionState`), {
+                            activePlayer: nextSetFirstPlayer,
+                            currentPlayerIndex: nextSetFirstIdx,
+                            currentBid: 0,
+                            currentBidTeam: null,
+                            timer: currentTimerVal,
+                            isSold: false,
+                            soldTo: null,
+                            isRtmPhase: false,
+                            isRtmUsedThisPlayer: false,
+                            rtmTeam: null,
+                            isSetTransition: false
+                        });
+                    });
+                }, 4000);
+            } else if (nextPlayerInData) {
+                // Normal advance within same set
+                get(ref(db, `rooms/${userData.roomId}/settings/timer`)).then(snap => {
+                    const currentTimerVal = snap.val() || 15;
+                    set(ref(db, `rooms/${userData.roomId}/auctionState`), {
+                        activePlayer: nextPlayerInData,
+                        currentPlayerIndex: currentSetRemainingIdx,
+                        currentBid: 0,
+                        currentBidTeam: null,
+                        timer: currentTimerVal,
+                        isSold: false,
+                        soldTo: null,
+                        isRtmPhase: false,
+                        isRtmUsedThisPlayer: false,
+                        rtmTeam: null
+                    });
+                });
+            }
+        }, 3000);
     };
 
     const handleRtmDecline = async () => {
