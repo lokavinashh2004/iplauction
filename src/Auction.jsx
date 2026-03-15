@@ -811,7 +811,9 @@ export default function Auction({ userData, onEnd }) {
     const actualMyTeam = roomUsers[userData.name]?.team || userData.team;
 
     // Check if the current user represents a team, and if that team is currently leading the bid
-    const isMyTeamLeading = Boolean(actualMyTeam && auctionState.currentBidTeam === actualMyTeam);
+    // Only applies if a bid has actually been placed on THIS player (currentBid > 0). 
+    // Otherwise, previous player's currentBidTeam could linger during transitions and disable the button.
+    const isMyTeamLeading = Boolean(auctionState.currentBid > 0 && actualMyTeam && auctionState.currentBidTeam === actualMyTeam);
 
     const mySquadSize = actualMyTeam && allSquads[actualMyTeam] ? allSquads[actualMyTeam].length : 0;
     const isSquadFull = mySquadSize >= 25;
@@ -822,8 +824,11 @@ export default function Auction({ userData, onEnd }) {
     const isPlayerOverseas = activePlayer.country && activePlayer.country !== 'IND';
     const isOverseasLimitReached = myOverseasCount >= 8 && isPlayerOverseas;
 
+    // Convert to cents to safely check affordability and avoid JavaScript floating point precision bugs (e.g. 1.249999999 <= 1.25)
+    const affordable = Math.round(nextBidAmount * 100) <= Math.round(myPurse * 100);
+
     // The user can only bid if they are a team, they aren't currently leading, they have enough purse, the game isn't paused, the squad isn't full, and the overseas limit isn't reached, and it isn't RTM phase
-    const canBid = Boolean(actualMyTeam && !isMyTeamLeading && nextBidAmount <= myPurse && !isPaused && !isSquadFull && !isOverseasLimitReached && !auctionState.isRtmPhase);
+    const canBid = Boolean(actualMyTeam && !isMyTeamLeading && affordable && !isPaused && !isSquadFull && !isOverseasLimitReached && !auctionState.isRtmPhase);
 
     const handlePlaceBid = () => {
         if (!canBid || isSold) return;

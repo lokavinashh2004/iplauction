@@ -90,6 +90,7 @@ export default function Home({ userData, setUserData, onJoin }) {
     };
 
     return (
+        <div className="home-page-wrapper">
         <div className="home-hero">
             {/* ── Background image ── */}
             <div className="home-hero-bg" />
@@ -252,6 +253,68 @@ export default function Home({ userData, setUserData, onJoin }) {
                     </div>
                 </div>
             )}
+        </div>
+
+            {/* ── SEO / LONG CONTENT SECTION ── */}
+            <div className="home-seo-container" style={{ backgroundColor: '#050505', color: '#b3b3b3', padding: '4rem 2rem', fontFamily: 'Inter, sans-serif', lineHeight: '1.6', position: 'relative', zIndex: 10 }}>
+                <div style={{ maxWidth: '900px', margin: '0 auto' }}>
+                    <h2 style={{ color: '#fff', fontSize: '2rem', marginBottom: '1.5rem', fontWeight: 800 }}>Experience the Ultimate IPL 2026 Mock Auction Setup</h2>
+                    <p style={{ marginBottom: '1.5rem', fontSize: '1.05rem' }}>
+                        Welcome to the most immersive and interactive <strong>IPL Mock Auction Simulation Game</strong> available online. Whether you are a die-hard cricket fan, a strategic analyst, or just someone looking to have fun with friends, our real-time auction platform gives you the exact thrill of sitting at the actual IPL auction table. Build your dream squad, manage your purse, and outbid your rival franchises in a competitive, fast-paced environment.
+                    </p>
+
+                    <h3 style={{ color: '#f59e0b', fontSize: '1.5rem', marginTop: '2.5rem', marginBottom: '1rem', fontWeight: 700 }}>How the IPL Auction Game Works</h3>
+                    <p style={{ marginBottom: '1.5rem' }}>
+                        The rules of our virtual IPL auction are designed to closely mirror the real event. You and your friends can create a private room or join an existing one using a 5-character secure room code. Once inside:
+                    </p>
+                    <ul style={{ paddingLeft: '1.5rem', marginBottom: '1.5rem', display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                        <li><strong>Choose Your Franchise:</strong> Pick from all 10 official IPL teams including CSK, MI, RCB, KKR, and others.</li>
+                        <li><strong>Manage Your Purse:</strong> You start with a designated virtual purse (e.g., ₹120 Cr). You must budget wisely to assemble a competitive 25-man squad.</li>
+                        <li><strong>Real-time Bidding:</strong> Players appear randomly from distinct sets (Marquee, Batsmen, Bowlers, All-rounders, etc.). Hit the bid button before the timer expires to claim the player.</li>
+                        <li><strong>Right to Match (RTM):</strong> Retaining the authentic vibe, the platform includes the RTM rule where the player's previous franchise can match the final winning bid.</li>
+                    </ul>
+
+                    <h3 style={{ color: '#f59e0b', fontSize: '1.5rem', marginTop: '2.5rem', marginBottom: '1rem', fontWeight: 700 }}>Key Features & Rules</h3>
+                    <p style={{ marginBottom: '1.5rem' }}>
+                        Our IPL Mock Auction platform boasts an extensive database featuring exactly 620 meticulously categorized players for the upcoming 2026 season. The built-in logic naturally enforces IPL squad restrictions:
+                    </p>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '1.5rem', marginBottom: '2rem' }}>
+                        <div style={{ background: '#111', padding: '1.5rem', borderRadius: '8px', border: '1px solid #333' }}>
+                            <h4 style={{ color: '#fff', marginBottom: '0.5rem', fontSize: '1.1rem' }}>Squad Size Limits</h4>
+                            <p style={{ fontSize: '0.9rem', color: '#999' }}>A squad can have a maximum of 25 players. Strategic planning is crucial to not run out of slots before securing key players.</p>
+                        </div>
+                        <div style={{ background: '#111', padding: '1.5rem', borderRadius: '8px', border: '1px solid #333' }}>
+                            <h4 style={{ color: '#fff', marginBottom: '0.5rem', fontSize: '1.1rem' }}>Overseas Players</h4>
+                            <p style={{ fontSize: '0.9rem', color: '#999' }}>Each franchise is strictly capped at 8 overseas players. Our system actively prevents bidding on foreign athletes if your quota is full.</p>
+                        </div>
+                        <div style={{ background: '#111', padding: '1.5rem', borderRadius: '8px', border: '1px solid #333' }}>
+                            <h4 style={{ color: '#fff', marginBottom: '0.5rem', fontSize: '1.1rem' }}>Base Prices & Increments</h4>
+                            <p style={{ fontSize: '0.9rem', color: '#999' }}>Players enter the pool at their authentic base prices. Bids increment dynamically, mimicking the fast-paced bidding wars of a live auction.</p>
+                        </div>
+                    </div>
+
+                    <h3 style={{ color: '#f59e0b', fontSize: '1.5rem', marginTop: '3rem', marginBottom: '1rem', fontWeight: 700 }}>Frequently Asked Questions (FAQ)</h3>
+                    
+                    <div style={{ marginBottom: '1.5rem' }}>
+                        <h4 style={{ color: '#fff', marginBottom: '0.4rem', fontSize: '1.1rem' }}>Is this IPL Mock Auction free to play?</h4>
+                        <p style={{ color: '#aaa', fontSize: '0.95rem' }}>Yes, the simulation is completely free. You simply enter a username, select your favorite IPL squad, and jump straight into the bidding action with your friends.</p>
+                    </div>
+
+                    <div style={{ marginBottom: '1.5rem' }}>
+                        <h4 style={{ color: '#fff', marginBottom: '0.4rem', fontSize: '1.1rem' }}>How does the host control the auction?</h4>
+                        <p style={{ color: '#aaa', fontSize: '0.95rem' }}>The player who creates the room automatically becomes the Host. The host has the exclusive ability to start the game, pause the bidding timer to allow for negotiations, and end the auction to reveal the final team squads on the dashboard.</p>
+                    </div>
+
+                    <div style={{ marginBottom: '1.5rem' }}>
+                        <h4 style={{ color: '#fff', marginBottom: '0.4rem', fontSize: '1.1rem' }}>Can I play on mobile devices?</h4>
+                        <p style={{ color: '#aaa', fontSize: '0.95rem' }}>Absolutely! The auction interface is fully responsive. The dynamic layouts, countdown timers, player cards, and live chat features are optimized for a smooth experience across both desktop and mobile networks.</p>
+                    </div>
+
+                    <div style={{ marginTop: '3rem', paddingTop: '2rem', borderTop: '1px solid #333', textAlign: 'center', fontSize: '0.85rem', color: '#666' }}>
+                        <p>This is a fan-made simulation and is not officially affiliated with or endorsed by the Board of Control for Cricket in India (BCCI) or the Indian Premier League (IPL). All team logos and player names are the property of their respective owners.</p>
+                    </div>
+                </div>
+            </div>
         </div>
     );
 }
