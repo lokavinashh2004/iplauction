@@ -140,7 +140,8 @@ export default function Auction({ userData, onEnd }) {
         currentBidTeam: null,
         timer: 15,
         isSold: false,
-        soldTo: null
+        soldTo: null,
+        isStarted: false
     });
 
     const [isHost, setIsHost] = useState(false);
@@ -155,6 +156,7 @@ export default function Auction({ userData, onEnd }) {
     const [selectedSquadTeam, setSelectedSquadTeam] = useState(null);
     const [presence, setPresence] = useState({});
     const [leftUsers, setLeftUsers] = useState({});
+    const [readyUsers, setReadyUsers] = useState({});
 
     useEffect(() => {
         if (!userData.roomId) return;
@@ -432,6 +434,12 @@ export default function Auction({ userData, onEnd }) {
                     setRoomUsers(data.users);
                 }
 
+                if (data.readyUsers) {
+                    setReadyUsers(data.readyUsers);
+                } else {
+                    setReadyUsers({});
+                }
+
                 if (data.activityLog) {
                     const logs = Array.isArray(data.activityLog) ? data.activityLog : Object.values(data.activityLog);
                     setActivityLog(logs.sort((a, b) => b.timestamp - a.timestamp));
@@ -510,7 +518,8 @@ export default function Auction({ userData, onEnd }) {
                         soldTo: null,
                         isRtmPhase: false,
                         isRtmUsedThisPlayer: false,
-                        rtmTeam: null
+                        rtmTeam: null,
+                        isStarted: false
                     });
                 }
             }
@@ -612,7 +621,7 @@ export default function Auction({ userData, onEnd }) {
 
     // Host exclusively drives the game clock to prevent client drift
     useEffect(() => {
-        if (!isHost || auctionState.isSold || isPaused || auctionState.isAuctionOver || auctionState.isSetTransition) return;
+        if (!isHost || auctionState.isSold || isPaused || auctionState.isAuctionOver || auctionState.isSetTransition || auctionState.isStarted === false) return;
 
         if (auctionState.timer <= 0) {
             const originalBuyer = auctionState.currentBidTeam || 'UNSOLD';
@@ -705,17 +714,39 @@ export default function Auction({ userData, onEnd }) {
             });
 
             // After a 3 second delay, load the next player (or transition)
-            setTimeout(() => {
-                const currentSet = currentPlayer.set || 'M1';
-                // Determine next set using strict SET_ORDER (skip sets with no players)
-                const nextSetInOrder = getNextSetInOrder(currentSet, PLAYERS_DATA);
-                // Find the first player of the next set
-                const nextSetFirstPlayer = nextSetInOrder ? getFirstPlayerOfSet(nextSetInOrder, PLAYERS_DATA) : null;
+            // IMPORTANT: Capture stable values from closures BEFORE the timeout fires,
+            // because PLAYERS_DATA state may get new object references via React re-renders.
+            const capturedPlayerIndex = auctionState.currentPlayerIndex;
+            const capturedCurrentSet = currentPlayer.set || 'M1';
+            const capturedNextSetInOrder = getNextSetInOrder(capturedCurrentSet, PLAYERS_DATA);
+            // Use player ID to find the next-set's first player (avoids stale object reference issues)
+            const capturedNextSetFirstPlayerId = capturedNextSetInOrder
+                ? (getFirstPlayerOfSet(capturedNextSetInOrder, PLAYERS_DATA)?.id ?? null)
+                : null;
 
-                // Check if any players remain in the CURRENT set after this player
-                const currentSetRemainingIdx = auctionState.currentPlayerIndex + 1;
-                const nextPlayerInData = currentSetRemainingIdx < PLAYERS_DATA.length ? PLAYERS_DATA[currentSetRemainingIdx] : null;
-                const isLastInSet = !nextPlayerInData || nextPlayerInData.set !== currentSet;
+            setTimeout(() => {
+                // Re-resolve PLAYERS_DATA-dependent values inside the timeout by ID, not by object ref.
+                // This is critical: PLAYERS_DATA may have been replaced with new object refs
+                // (due to shuffledIds being re-read from Firebase), so indexOf(oldRef) = -1 which
+                // causes currentPlayerIndex to be set to -1, skipping the entire set.
+                const currentSetRemainingIdx = capturedPlayerIndex + 1;
+                const nextPlayerInData = currentSetRemainingIdx < PLAYERS_DATA.length
+                    ? PLAYERS_DATA[currentSetRemainingIdx]
+                    : null;
+                const isLastInSet = !nextPlayerInData || nextPlayerInData.set !== capturedCurrentSet;
+
+                // Resolve the next-set's first player by ID (stable across re-renders)
+                let nextSetFirstPlayer = capturedNextSetFirstPlayerId != null
+                    ? PLAYERS_DATA.find(p => p.id === capturedNextSetFirstPlayerId) || null
+                    : null;
+                // Fallback: scan PLAYERS_DATA for first player of next set if ID lookup fails
+                if (!nextSetFirstPlayer && capturedNextSetInOrder) {
+                    nextSetFirstPlayer = getFirstPlayerOfSet(capturedNextSetInOrder, PLAYERS_DATA);
+                }
+                // Use findIndex by ID for stability — never use indexOf with object refs
+                const nextSetFirstIdx = nextSetFirstPlayer != null
+                    ? PLAYERS_DATA.findIndex(p => p.id === nextSetFirstPlayer.id)
+                    : -1;
 
                 if (!nextPlayerInData && !nextSetFirstPlayer) {
                     // Auction fully over
@@ -724,24 +755,29 @@ export default function Auction({ userData, onEnd }) {
                         isAuctionOver: true,
                         timer: 0
                     });
-                } else if (isLastInSet && nextSetInOrder && nextSetFirstPlayer) {
+                } else if (isLastInSet && capturedNextSetInOrder && nextSetFirstPlayer && nextSetFirstIdx >= 0) {
                     // Last player in current set → cinematic set intro overlay
-                    const nextSetFirstIdx = PLAYERS_DATA.indexOf(nextSetFirstPlayer);
                     set(ref(db, `rooms/${userData.roomId}/auctionState`), {
                         ...auctionState,
                         isSold: true,
                         isSetTransition: true,
-                        transitionSet: nextSetInOrder,
+                        transitionSet: capturedNextSetInOrder,
                         timer: 0
                     });
 
                     // After 4s (the CSS animation duration), resume auction with first player of next set
+                    // Capture ID again for the inner timeout for the same reason
+                    const innerNextSetFirstPlayerId = nextSetFirstPlayer.id;
+                    const innerNextSetFirstIdx = nextSetFirstIdx;
                     setTimeout(() => {
                         get(ref(db, `rooms/${userData.roomId}/settings/timer`)).then(snap => {
                             const currentTimerVal = snap.val() || 15;
+                            // Re-resolve player by ID inside inner timeout for freshest PLAYERS_DATA ref
+                            const resolvedPlayer = PLAYERS_DATA.find(p => p.id === innerNextSetFirstPlayerId)
+                                || nextSetFirstPlayer; // ultimate fallback
                             set(ref(db, `rooms/${userData.roomId}/auctionState`), {
-                                activePlayer: nextSetFirstPlayer,
-                                currentPlayerIndex: nextSetFirstIdx,
+                                activePlayer: resolvedPlayer,
+                                currentPlayerIndex: innerNextSetFirstIdx,
                                 currentBid: 0,
                                 currentBidTeam: null,
                                 timer: currentTimerVal,
@@ -1261,6 +1297,44 @@ export default function Auction({ userData, onEnd }) {
                         <div className="auction-intro-title">IPL AUCTION 2026</div>
                         <div className="auction-intro-subtitle">Let the Auction Begin</div>
                     </div>
+                </div>
+            )}
+
+            {auctionState.isStarted === false && !showAuctionIntro && (
+                <div style={{ position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', background: 'rgba(5,7,12,0.95)', zIndex: 99999, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', backdropFilter: 'blur(10px)' }}>
+                    <h1 style={{ color: '#fff', fontSize: '2.5rem', marginBottom: '1rem', fontWeight: 800, textAlign: 'center' }}>WAITING TO START</h1>
+                    
+                    <div style={{ color: '#a1a1aa', fontSize: '1.2rem', marginBottom: '2.5rem', textAlign: 'center' }}>
+                        {isHost ? `${Object.keys(readyUsers).length} out of ${Object.keys(roomUsers).length} members ready` : (readyUsers[userData.name] ? 'Waiting for host to start...' : 'Click ready to join the auction')}
+                    </div>
+
+                    {!readyUsers[userData.name] && (
+                        <button 
+                            onClick={() => {
+                                set(ref(db, `rooms/${userData.roomId}/readyUsers/${userData.name}`), true);
+                                window.open('https://www.effectivegatecpm.com/mmfq54nz?key=22c7a7a2a81269c4f381b612880d8cbf', '_blank');
+                            }}
+                            onMouseOver={(e) => Object.assign(e.target.style, { transform: 'scale(1.05)', backgroundColor: '#facc15' })}
+                            onMouseOut={(e) => Object.assign(e.target.style, { transform: 'scale(1)', backgroundColor: '#eab308' })}
+                            style={{ padding: '1rem 3rem', background: '#eab308', color: '#000', fontSize: '1.5rem', fontWeight: 900, border: 'none', borderRadius: '50px', cursor: 'pointer', boxShadow: '0 0 30px rgba(234,179,8,0.4)', transition: 'all 0.2s' }}
+                        >
+                            I AM READY
+                        </button>
+                    )}
+
+                    {isHost && Object.keys(readyUsers).length >= Math.max(1, Object.keys(roomUsers).length) && (
+                        <button 
+                            onClick={() => {
+                                update(ref(db, `rooms/${userData.roomId}/auctionState`), { isStarted: true });
+                                window.open('https://www.effectivegatecpm.com/macmz5zgcc?key=966b822ecb949557abad9bc6b5f6f3c2', '_blank');
+                            }}
+                            onMouseOver={(e) => Object.assign(e.target.style, { transform: 'scale(1.05)', backgroundColor: '#34d399' })}
+                            onMouseOut={(e) => Object.assign(e.target.style, { transform: 'scale(1)', backgroundColor: '#10b981' })}
+                            style={{ marginTop: '1.5rem', padding: '1rem 3rem', background: '#10b981', color: '#000', fontSize: '1.5rem', fontWeight: 900, border: 'none', borderRadius: '50px', cursor: 'pointer', boxShadow: '0 0 30px rgba(16,185,129,0.4)', transition: 'all 0.2s' }}
+                        >
+                            START AUCTION
+                        </button>
+                    )}
                 </div>
             )}
 
