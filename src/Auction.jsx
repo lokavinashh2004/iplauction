@@ -127,10 +127,7 @@ export default function Auction({ userData, onEnd }) {
     const [PLAYERS_DATA, setPlayersData] = useState(RAW_PLAYERS_DATA);
 
     // Auction cinematic intro (runs once per session per room)
-    const [showAuctionIntro, setShowAuctionIntro] = useState(() => {
-        if (!userData?.roomId) return false;
-        return !sessionStorage.getItem(`auction_intro_shown_${userData.roomId}`);
-    });
+    const [showAuctionIntro, setShowAuctionIntro] = useState(false);
 
     // Synced State
     const [auctionState, setAuctionState] = useState({
@@ -382,7 +379,7 @@ export default function Auction({ userData, onEnd }) {
     };
 
     useEffect(() => {
-        if (!userData?.roomId) return;
+        if (!userData?.roomId || !auctionState.isStarted) return;
         const key = `auction_intro_shown_${userData.roomId}`;
         const alreadyShown = sessionStorage.getItem(key);
 
@@ -399,7 +396,7 @@ export default function Auction({ userData, onEnd }) {
         }, 4000);
 
         return () => clearTimeout(t);
-    }, [userData?.roomId]);
+    }, [userData?.roomId, auctionState.isStarted]);
 
     const handleDragEnd = (result) => {
         if (!result.destination) return;
@@ -621,7 +618,7 @@ export default function Auction({ userData, onEnd }) {
 
     // Host exclusively drives the game clock to prevent client drift
     useEffect(() => {
-        if (!isHost || auctionState.isSold || isPaused || auctionState.isAuctionOver || auctionState.isSetTransition || auctionState.isStarted === false) return;
+        if (!isHost || auctionState.isSold || isPaused || auctionState.isAuctionOver || auctionState.isSetTransition || auctionState.isStarted === false || showAuctionIntro) return;
 
         if (auctionState.timer <= 0) {
             const originalBuyer = auctionState.currentBidTeam || 'UNSOLD';
@@ -1300,7 +1297,7 @@ export default function Auction({ userData, onEnd }) {
                 </div>
             )}
 
-            {auctionState.isStarted === false && !showAuctionIntro && (
+            {auctionState.isStarted === false && (
                 <div style={{ position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', background: 'rgba(5,7,12,0.95)', zIndex: 99999, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', backdropFilter: 'blur(10px)' }}>
                     <h1 style={{ color: '#fff', fontSize: '2.5rem', marginBottom: '1rem', fontWeight: 800, textAlign: 'center' }}>WAITING TO START</h1>
                     
