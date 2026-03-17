@@ -7,7 +7,7 @@ import Room from './Room';
 import Auction from './Auction';
 import { useVersionCheck } from './useVersionCheck';
 
-function ScriptTag({ src, async = true }) {
+export function ScriptTag({ src, async = true }) {
   useEffect(() => {
     if (!src) return;
     if (document.querySelector(`script[data-ad-src="${src}"]`)) return;
@@ -362,8 +362,7 @@ function App() {
 
   return (
     <div className={`app-container ${userData.mode === 'football' ? 'theme-football' : ''}`}>
-      {/* Social bar (global) */}
-      <ScriptTag src="https://pl28898581.effectivegatecpm.com/27/b2/44/27b244a27efdef8cdcfed8a6489a22a5.js" />
+      {/* Social bar removed from global scope to show only at end game */}
 
       {/* Top banner 468x60 */}
       <div style={{ display: 'flex', justifyContent: 'center', padding: '0.5rem 0' }}>

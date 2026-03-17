@@ -4,6 +4,7 @@ import { ref, onValue, set, get, update } from 'firebase/database';
 import { playersData as RAW_PLAYERS_DATA } from './Players/playersData';
 import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd';
 import { Ad2Sidebar } from './AdBanner';
+import { ScriptTag } from './App';
 import './App.css';
 const TEAM_COLORS = {
     MI: '#004BA0',
@@ -951,6 +952,7 @@ export default function Auction({ userData, onEnd }) {
 
         return (
             <div style={{ width: '100%', minHeight: '100vh', background: 'linear-gradient(180deg, #0a0a0f 0%, #0d1117 100%)', paddingBottom: '3rem' }}>
+                <ScriptTag src="https://pl28898581.effectivegatecpm.com/27/b2/44/27b244a27efdef8cdcfed8a6489a22a5.js" />
                 {/* Header */}
                 <div style={{ background: 'linear-gradient(135deg, #1a1a2e 0%, #16213e 100%)', borderBottom: '1px solid rgba(212,175,55,0.3)', padding: '2rem 1rem', textAlign: 'center', position: 'relative' }}>
                     <div style={{ fontSize: '0.75rem', letterSpacing: '3px', color: '#D4AF37', fontWeight: 700, marginBottom: '0.5rem', textTransform: 'uppercase' }}>
